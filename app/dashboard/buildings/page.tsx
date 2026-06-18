@@ -13,16 +13,22 @@ export default async function BuildingsPage() {
     .order('created_at', { ascending: false })
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="space-y-4">
+      <div className="rounded-lg bg-zinc-950 p-4 text-white dark:bg-white dark:text-zinc-950">
+        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+          Property data
+        </p>
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Buildings</h1>
-          <p className="mt-1 text-sm text-zinc-500">
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight">Buildings</h1>
+          <p className="mt-2 text-sm text-zinc-300 dark:text-zinc-600">
             {buildings?.length || 0} saved building{buildings?.length === 1 ? '' : 's'}
           </p>
         </div>
+      </div>
+
+      <div>
         <Link href="/dashboard/buildings/new">
-          <Button className="w-full rounded-lg sm:w-auto">
+          <Button className="h-12 w-full rounded-lg text-base">
             <Plus className="mr-2 size-4" /> Add Building
           </Button>
         </Link>
@@ -39,14 +45,14 @@ export default async function BuildingsPage() {
           buildings.map((building) => (
             <div
               key={building.id}
-              className="group relative overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm transition-colors hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-zinc-700"
+              className="group relative overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm transition-colors active:scale-[0.99] dark:border-zinc-800 dark:bg-zinc-950"
             >
               <Link
                 href={`/dashboard/buildings/${building.id}`}
-                className="grid gap-3 p-4 pr-14 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:p-5 sm:pr-16"
+                className="block p-4 pr-14"
               >
                 <div className="min-w-0">
-                  <h3 className="truncate text-base font-semibold transition-colors group-hover:text-zinc-700 dark:group-hover:text-zinc-200">
+                  <h3 className="truncate text-lg font-semibold">
                     {building.name}
                   </h3>
                   <div className="mt-2 flex min-w-0 items-start gap-2 text-sm text-zinc-500">
@@ -54,12 +60,12 @@ export default async function BuildingsPage() {
                     <span className="line-clamp-2">{building.address}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 text-xs text-zinc-500">
+                <div className="mt-3 flex items-center justify-between gap-3 text-xs text-zinc-500">
                   <span className="inline-flex items-center gap-1 rounded-md bg-zinc-100 px-2 py-1 dark:bg-zinc-900">
                     <KeyRound className="size-3.5" />
                     {building.gate_password || 'No gate code'}
                   </span>
-                  <ChevronRight className="hidden size-5 text-zinc-400 transition-colors group-hover:text-zinc-900 dark:group-hover:text-zinc-100 sm:block" />
+                  <ChevronRight className="size-5 text-zinc-400" />
                 </div>
               </Link>
 
@@ -71,7 +77,7 @@ export default async function BuildingsPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="size-8 rounded-lg text-zinc-400 opacity-100 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 sm:opacity-0 sm:group-hover:opacity-100"
+                    className="size-9 rounded-lg text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
                     aria-label={`Delete ${building.name}`}
                   >
                     <Trash2 className="size-4" />

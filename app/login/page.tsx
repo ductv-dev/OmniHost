@@ -52,17 +52,20 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 py-12 sm:px-6 lg:px-8 dark:bg-zinc-950">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
+    <div className="flex min-h-dvh items-end justify-center bg-zinc-100 px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] dark:bg-zinc-950 sm:items-center">
+      <Card className="w-full max-w-[520px]">
+        <CardHeader className="space-y-2 p-4 pb-3">
+          <div className="mb-3 flex size-12 items-center justify-center rounded-lg bg-zinc-950 text-sm font-bold text-white dark:bg-white dark:text-zinc-950">
+            OH
+          </div>
           <CardTitle className="text-2xl font-bold tracking-tight">
             Welcome back
           </CardTitle>
           <CardDescription>
-            Enter your email and password to log in to the admin panel.
+            Sign in to your mobile host workspace.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 pt-0">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -92,7 +95,7 @@ export default function LoginPage() {
               </div>
             )}
 
-            <Button className="w-full" type="submit" disabled={isLoading}>
+            <Button className="h-12 w-full rounded-lg text-base" type="submit" disabled={isLoading}>
               {isLoading ? "Signing in..." : "Sign In"}
             </Button>
           </form>

@@ -90,18 +90,21 @@ export default function BuildingForm({ building }: { building?: Tables<"building
   }
 
   return (
-    <div className="space-y-6 pb-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+    <div className="space-y-4 pb-3">
+      <div className="rounded-lg bg-zinc-950 p-4 text-white dark:bg-white dark:text-zinc-950">
+        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+          {isEditing ? "Edit data" : "New data"}
+        </p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight">
           {isEditing ? "Edit Building" : "Add Building"}
         </h1>
       </div>
 
-      <Card className="max-w-2xl">
-        <CardHeader>
+      <Card>
+        <CardHeader className="p-4 pb-3">
           <CardTitle>Details</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 pt-0">
           <form
             onSubmit={handleSubmit(onSubmit)}
             className="flex flex-col space-y-4"
@@ -140,7 +143,7 @@ export default function BuildingForm({ building }: { building?: Tables<"building
               <Input placeholder="1234*" {...register("gate_password")} />
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4">
               <div className="space-y-2">
                 <Label>Lobby Wi-Fi Name (Optional)</Label>
                 <Input placeholder="29 AT39" {...register("lobby_wifi_name")} />
@@ -175,7 +178,7 @@ export default function BuildingForm({ building }: { building?: Tables<"building
               </div>
             )}
 
-            <div className="mt-auto flex gap-4 pt-4">
+            <div className="mt-auto flex gap-3 pt-4">
               <Button
                 type="button"
                 variant="outline"

@@ -113,10 +113,9 @@ export default function TemplatesClient({
   }
 
   return (
-    <div className="space-y-6 pb-8">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Reusable Messages</h2>
-        <Button onClick={() => handleOpenModal()} className="rounded-lg">
+    <div className="space-y-4 pb-3">
+      <div>
+        <Button onClick={() => handleOpenModal()} className="h-12 w-full rounded-lg text-base">
           <Plus className="mr-2 size-4" /> Add Template
         </Button>
       </div>
@@ -131,7 +130,7 @@ export default function TemplatesClient({
         {Object.entries(groupedTemplates).map(([cat, tpls]) => (
           <div key={cat} className="space-y-3">
             <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">{cat}</h3>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3">
               {tpls.map(template => (
                 <Card key={template.id} className="group relative transition-colors hover:border-zinc-300 dark:hover:border-zinc-700">
                   <div className="absolute right-3 top-3 flex gap-1">
@@ -142,14 +141,14 @@ export default function TemplatesClient({
                       <Trash2 className="size-4" />
                     </button>
                   </div>
-                  <CardHeader className="pb-2 pr-24">
+                  <CardHeader className="p-4 pb-2 pr-24">
                     <span className="inline-flex w-fit items-center gap-1 rounded-md bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
                       <PenLine className="size-3" /> Common
                     </span>
-                    <CardTitle className="text-base">{template.name}</CardTitle>
+                    <CardTitle className="text-lg">{template.name}</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <p className="line-clamp-4 whitespace-pre-wrap text-sm text-muted-foreground">
+                  <CardContent className="p-4 pt-0">
+                    <p className="line-clamp-4 whitespace-pre-wrap text-[15px] leading-6 text-muted-foreground">
                       {template.content}
                     </p>
                   </CardContent>
@@ -173,13 +172,13 @@ export default function TemplatesClient({
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="max-h-[90vh] w-full max-w-3xl space-y-6 overflow-y-auto rounded-t-xl bg-white p-5 pb-7 shadow-2xl dark:bg-zinc-950 sm:rounded-xl"
+              className="max-h-[92dvh] w-full max-w-[520px] space-y-5 overflow-y-auto rounded-t-lg bg-white p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-2xl dark:bg-zinc-950 sm:rounded-lg"
             >
               <h2 className="text-xl font-semibold">
                 {editingTemplate ? 'Edit Common Template' : 'New Common Template'}
               </h2>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4">
                 <div className="space-y-2">
                   <Label>Template Name</Label>
                   <Input value={name} onChange={event => setName(event.target.value)} placeholder="e.g., Ask Check-in Time" />
@@ -227,7 +226,7 @@ export default function TemplatesClient({
                 <textarea
                   value={content}
                   onChange={event => setContent(event.target.value)}
-                  className="flex min-h-[300px] w-full rounded-lg border-0 bg-black/5 px-4 py-3 text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
+                className="flex min-h-[260px] w-full rounded-lg border-0 bg-black/5 px-4 py-3 text-base transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
                   placeholder="Hello! Please update me with your estimated check-in time..."
                 />
               </div>

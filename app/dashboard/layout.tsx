@@ -3,8 +3,8 @@
 import React from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { AnimatePresence, motion } from 'framer-motion'
-import { Building2, FileText, MessageSquare, LogOut } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { Building2, FileText, Home, MessageSquare, LogOut } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 export default function DashboardLayout({
@@ -16,10 +16,12 @@ export default function DashboardLayout({
   const router = useRouter()
   
   const navItems = [
-    { href: '/dashboard/buildings', icon: Building2, label: 'Buildings' },
-    { href: '/dashboard/templates', icon: FileText, label: 'Templates' },
     { href: '/dashboard/generator', icon: MessageSquare, label: 'Messages' },
+    { href: '/dashboard/templates', icon: FileText, label: 'Templates' },
+    { href: '/dashboard/buildings', icon: Building2, label: 'Buildings' },
   ]
+
+  const currentItem = navItems.find(item => pathname.startsWith(item.href))
 
   const handleLogout = async () => {
     const supabase = createClient()
@@ -28,110 +30,64 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-zinc-100 text-zinc-950 dark:bg-zinc-950 dark:text-zinc-50">
-      <div className="mx-auto flex min-h-screen w-full max-w-7xl">
-        <aside className="sticky top-0 hidden h-screen w-64 shrink-0 border-r border-zinc-200 bg-white px-4 py-5 dark:border-zinc-800 dark:bg-zinc-950 lg:block">
-          <div className="mb-8 flex items-center gap-3 px-2">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-zinc-950 text-white dark:bg-white dark:text-zinc-950">
-              <Building2 className="size-5" />
-            </div>
-            <div>
-              <p className="text-base font-semibold leading-tight">OmniHost</p>
-              <p className="text-xs text-zinc-500">Message workspace</p>
-            </div>
-          </div>
-
-          <nav className="space-y-1">
-            {navItems.map((item) => {
-              const isActive = pathname.startsWith(item.href)
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-zinc-950 text-white dark:bg-white dark:text-zinc-950'
-                      : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-50'
-                  }`}
-                >
-                  <item.icon className="size-4" />
-                  {item.label}
-                </Link>
-              )
-            })}
-          </nav>
-
-          <button
-            onClick={handleLogout}
-            className="absolute bottom-5 left-4 right-4 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-zinc-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
-          >
-            <LogOut className="size-4" />
-            Sign out
-          </button>
-        </aside>
-
-        <div className="flex min-w-0 flex-1 flex-col bg-white dark:bg-zinc-950 lg:bg-zinc-50 lg:dark:bg-zinc-950">
-          <header className="sticky top-0 z-50 flex items-center justify-between border-b border-zinc-200 bg-white/90 px-4 py-3 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/90 lg:px-8">
-            <div className="flex items-center gap-3 lg:hidden">
-              <div className="flex size-8 items-center justify-center rounded-lg bg-zinc-950 text-white dark:bg-white dark:text-zinc-950">
-                <Building2 className="size-4" />
+    <div className="min-h-dvh bg-zinc-100 text-zinc-950 dark:bg-zinc-950 dark:text-zinc-50">
+      <div className="mx-auto flex min-h-dvh w-full max-w-[520px] flex-col bg-white shadow-2xl shadow-zinc-950/5 dark:bg-zinc-950">
+        <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/95 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
+          <div className="flex items-center justify-between">
+            <Link href="/dashboard/generator" className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-zinc-950">
+                <Home className="size-5" />
               </div>
-              <span className="text-lg font-semibold tracking-tight">OmniHost</span>
-            </div>
-            <div className="hidden lg:block">
-              <p className="text-sm font-medium text-zinc-500">Host operations</p>
-            </div>
+              <div>
+                <p className="text-base font-semibold leading-tight">OmniHost</p>
+                <p className="text-xs text-zinc-500">
+                  {currentItem?.label || 'Mobile workspace'}
+                </p>
+              </div>
+            </Link>
             <button
               onClick={handleLogout}
-              className="flex size-9 items-center justify-center rounded-lg bg-zinc-100 text-zinc-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:bg-zinc-900 dark:hover:bg-red-950/30"
+              className="flex size-10 items-center justify-center rounded-xl bg-zinc-100 text-zinc-500 transition-colors active:scale-95 dark:bg-zinc-900"
               aria-label="Sign out"
             >
               <LogOut className="size-4" />
             </button>
-          </header>
+          </div>
+        </header>
 
-          <main className="flex-1 px-4 py-6 pb-28 sm:px-6 lg:px-8 lg:pb-10">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={pathname}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            >
+        <main className="flex-1 overflow-x-hidden px-4 py-4 pb-[calc(6.75rem+env(safe-area-inset-bottom))]">
+          <div>
               {children}
-            </motion.div>
-          </AnimatePresence>
+          </div>
         </main>
 
-          <div className="fixed bottom-4 left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 lg:hidden">
-          <nav className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white/90 p-1.5 shadow-lg backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/90">
+        <nav className="fixed bottom-0 left-1/2 z-50 w-full max-w-[520px] -translate-x-1/2 border-t border-zinc-200 bg-white/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
+          <div className="grid grid-cols-3 gap-2">
             {navItems.map((item) => {
               const isActive = pathname.startsWith(item.href)
               return (
-                <Link key={item.href} href={item.href} className="relative flex-1 flex flex-col items-center justify-center rounded-lg p-2">
-                  <motion.div 
-                    whileTap={{ scale: 0.8 }}
+                <Link key={item.href} href={item.href} className="relative flex min-h-14 flex-col items-center justify-center rounded-2xl px-2 py-2">
+                  <motion.div
+                    whileTap={{ scale: 0.92 }}
                     className="relative z-10 flex flex-col items-center gap-1"
                   >
-                    <item.icon className={`size-5 transition-colors duration-300 ${isActive ? 'text-zinc-950 dark:text-white' : 'text-zinc-500'}`} />
-                    <span className={`text-[10px] font-medium transition-colors duration-300 ${isActive ? 'text-zinc-950 dark:text-white' : 'text-zinc-500'}`}>
+                    <item.icon className={`size-5 transition-colors ${isActive ? 'text-zinc-950 dark:text-white' : 'text-zinc-500'}`} />
+                    <span className={`text-[11px] font-semibold leading-none transition-colors ${isActive ? 'text-zinc-950 dark:text-white' : 'text-zinc-500'}`}>
                       {item.label}
                     </span>
                   </motion.div>
                   {isActive && (
                     <motion.div
-                      layoutId="nav-pill"
-                      className="absolute inset-0 rounded-lg bg-zinc-100 dark:bg-zinc-900"
-                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                      layoutId="mobile-nav-pill"
+                      className="absolute inset-0 rounded-2xl bg-zinc-100 dark:bg-zinc-900"
+                      transition={{ type: "spring", bounce: 0.18, duration: 0.45 }}
                     />
                   )}
                 </Link>
               )
             })}
-          </nav>
           </div>
-        </div>
+        </nav>
       </div>
     </div>
   )

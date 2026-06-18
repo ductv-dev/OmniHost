@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Copy, CheckCircle2 } from 'lucide-react'
+import { Copy, CheckCircle2, MessageSquareText, Settings2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -174,18 +174,25 @@ export default function GeneratorClient({
   }
 
   return (
-    <div className="grid gap-6 pb-8 lg:grid-cols-[minmax(320px,420px)_minmax(0,1fr)]">
+    <div className="grid gap-4 pb-3">
       <div className="space-y-4">
         <Card className="rounded-lg">
-          <CardHeader>
-            <CardTitle>Message Setup</CardTitle>
-            <CardDescription>Select the source data for this reply.</CardDescription>
+          <CardHeader className="p-4 pb-3">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-900">
+                <Settings2 className="size-5" />
+              </div>
+              <div>
+                <CardTitle>Setup</CardTitle>
+                <CardDescription>Pick only what this message needs.</CardDescription>
+              </div>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-5">
+          <CardContent className="space-y-4 p-4 pt-0">
             <div className="space-y-2">
               <Label>Building</Label>
               <select
-                className="flex h-11 w-full rounded-lg border-0 bg-black/5 px-3 py-2 text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
+                className="flex h-12 w-full rounded-lg border-0 bg-black/5 px-3 py-2 text-base transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
                 value={selectedBuildingId}
                 onChange={(e) => {
                   setSelectedBuildingId(e.target.value)
@@ -206,7 +213,7 @@ export default function GeneratorClient({
             <div className="space-y-2">
               <Label>Template</Label>
               <select
-                className="flex h-11 w-full rounded-lg border-0 bg-black/5 px-3 py-2 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
+                className="flex h-12 w-full rounded-lg border-0 bg-black/5 px-3 py-2 text-base font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
                 value={selectedTemplateKey}
                 onChange={(e) => {
                   const nextTemplateKey = e.target.value
@@ -248,7 +255,7 @@ export default function GeneratorClient({
             <div className="space-y-2">
               <Label>Room</Label>
               <select
-                className="flex h-11 w-full rounded-lg border-0 bg-black/5 px-3 py-2 text-sm transition-all disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
+                className="flex h-12 w-full rounded-lg border-0 bg-black/5 px-3 py-2 text-base transition-all disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
                 value={selectedRoomId}
                 onChange={(e) => setSelectedRoomId(e.target.value)}
                 disabled={!selectedBuildingId || selectedTemplateSource === 'common' || isCustomTemplate}
@@ -273,11 +280,11 @@ export default function GeneratorClient({
               exit={{ opacity: 0, y: -8 }}
             >
               <Card className="rounded-lg">
-                <CardHeader>
+                <CardHeader className="p-4 pb-3">
                   <CardTitle>Manual Fields</CardTitle>
-                  <CardDescription>Fill only the changing guest details.</CardDescription>
+                  <CardDescription>Fill only changing guest details.</CardDescription>
                 </CardHeader>
-                <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+                <CardContent className="grid gap-4 p-4 pt-0">
                   {dynamicKeys.map((key) => (
                     <motion.div
                       key={key}
@@ -301,23 +308,26 @@ export default function GeneratorClient({
         </AnimatePresence>
       </div>
 
-      <div className="lg:sticky lg:top-24 lg:self-start">
-        <Card className="min-h-[420px] rounded-lg">
-          <CardHeader className="flex flex-row items-center justify-between gap-4 border-b border-zinc-200 pb-4 dark:border-zinc-800">
-            <div>
-              <CardTitle>Preview</CardTitle>
+      <div>
+        <Card className="min-h-[380px] rounded-lg">
+          <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-zinc-200 p-4 dark:border-zinc-800">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <MessageSquareText className="size-4 text-zinc-500" />
+                <CardTitle>Preview</CardTitle>
+              </div>
               <CardDescription>
                 {selectedTemplate ? selectedTemplate.name : 'Select a template to generate a reply.'}
               </CardDescription>
             </div>
-            <Button size="sm" onClick={handleCopy} disabled={!generatedMessage} className="shrink-0 rounded-lg">
+            <Button size="lg" onClick={handleCopy} disabled={!generatedMessage} className="h-11 shrink-0 rounded-lg px-4">
               {copied ? (
                 <>
-                  <CheckCircle2 className="mr-2 size-4" /> Copied
+                  <CheckCircle2 className="size-4" /> Copied
                 </>
               ) : (
                 <>
-                  <Copy className="mr-2 size-4" /> Copy
+                  <Copy className="size-4" /> Copy
                 </>
               )}
             </Button>
@@ -327,7 +337,7 @@ export default function GeneratorClient({
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="whitespace-pre-wrap p-5 text-sm leading-7"
+                className="whitespace-pre-wrap p-4 text-[15px] leading-7"
               >
                 {generatedMessage}
               </motion.div>

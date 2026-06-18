@@ -121,11 +121,22 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    -webkit-tap-highlight-color: transparent;
     }
   body {
     @apply bg-background text-foreground;
+    min-height: 100dvh;
+    overscroll-behavior-y: none;
     }
   html {
     @apply font-sans;
+    text-rendering: optimizeLegibility;
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
     }
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }

@@ -10,23 +10,24 @@ export default async function BuildingHubPage({
   const supabase = await createClient()
   const { id } = await params
   
-  // Fetch Building
-  const { data: building } = await supabase
-    .from('buildings')
-    .select('*')
-    .eq('id', id)
-    .single()
+  const [buildingResult, roomsResult] = await Promise.all([
+    supabase
+      .from('buildings')
+      .select('*')
+      .eq('id', id)
+      .single(),
+    supabase
+      .from('rooms')
+      .select('*')
+      .eq('building_id', id)
+      .order('room_number', { ascending: true }),
+  ])
+
+  const building = buildingResult.data
     
   if (!building) {
     notFound()
   }
 
-  // Fetch Rooms
-  const { data: rooms } = await supabase
-    .from('rooms')
-    .select('*')
-    .eq('building_id', id)
-    .order('room_number', { ascending: true })
-
-  return <BuildingHubClient building={building} rooms={rooms || []} />
+  return <BuildingHubClient building={building} rooms={roomsResult.data || []} />
 }

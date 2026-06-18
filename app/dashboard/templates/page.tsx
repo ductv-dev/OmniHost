@@ -10,10 +10,13 @@ export default async function CommonTemplatesPage() {
     .order('name')
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Common Templates</h1>
-        <p className="mt-1 text-sm text-zinc-500">
+    <div className="space-y-4">
+      <div className="rounded-lg bg-zinc-950 p-4 text-white dark:bg-white dark:text-zinc-950">
+        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+          Reusable replies
+        </p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight">Templates</h1>
+        <p className="mt-2 text-sm leading-6 text-zinc-300 dark:text-zinc-600">
           Create reusable messages that do not belong to any building or room.
         </p>
       </div>

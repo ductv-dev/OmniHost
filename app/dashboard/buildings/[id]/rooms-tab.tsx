@@ -95,15 +95,15 @@ export default function RoomsTab({ buildingId, initialRooms }: { buildingId: str
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
         <h2 className="text-xl font-semibold">Rooms</h2>
-        <Button onClick={() => handleOpenModal()} className="rounded-lg">
+        <Button onClick={() => handleOpenModal()} className="h-11 rounded-lg">
           <Plus className="mr-2 size-4" /> Add Room
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3">
         {rooms.map(room => (
           <Card key={room.id} className="group relative transition-colors hover:border-zinc-300 dark:hover:border-zinc-700">
             <div className="absolute right-3 top-3 flex gap-1">
@@ -114,11 +114,11 @@ export default function RoomsTab({ buildingId, initialRooms }: { buildingId: str
                 <Trash2 className="size-4" />
               </button>
             </div>
-            <CardHeader className="pb-3 pr-24">
+            <CardHeader className="p-4 pb-3 pr-24">
               <CardTitle className="text-2xl">{room.room_number}</CardTitle>
               <p className="text-xs font-medium text-muted-foreground uppercase">Floor {room.floor}</p>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 pt-0">
               <div className="space-y-1 text-sm text-muted-foreground">
                 <p>Lockbox: <span className="text-foreground">{room.lockbox_password || 'N/A'}</span></p>
                 <p>Wi-Fi: <span className="text-foreground">{room.wifi_name || 'N/A'}</span></p>
@@ -145,12 +145,12 @@ export default function RoomsTab({ buildingId, initialRooms }: { buildingId: str
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="w-full max-w-md space-y-6 rounded-t-xl bg-white p-5 pb-7 shadow-2xl dark:bg-zinc-950 sm:rounded-xl"
+              className="max-h-[92dvh] w-full max-w-[520px] space-y-5 overflow-y-auto rounded-t-lg bg-white p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-2xl dark:bg-zinc-950 sm:rounded-lg"
             >
               <h2 className="text-xl font-semibold">{editingRoom ? 'Edit Room' : 'New Room'}</h2>
               
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label>Room Number</Label>
                     <Input value={roomNumber} onChange={e => setRoomNumber(e.target.value)} placeholder="e.g., 101" />
@@ -166,7 +166,7 @@ export default function RoomsTab({ buildingId, initialRooms }: { buildingId: str
                   <Input value={lockboxPassword} onChange={e => setLockboxPassword(e.target.value)} placeholder="e.g., 1234" />
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label>Wi-Fi Name</Label>
                     <Input value={wifiName} onChange={e => setWifiName(e.target.value)} placeholder="Room 101 Wi-Fi" />
@@ -177,7 +177,7 @@ export default function RoomsTab({ buildingId, initialRooms }: { buildingId: str
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label>Washing Machine Floor</Label>
                     <Input type="number" value={washingMachineFloor} onChange={e => setWashingMachineFloor(e.target.value)} placeholder="5" />
@@ -201,7 +201,7 @@ export default function RoomsTab({ buildingId, initialRooms }: { buildingId: str
                 {error && <p className="text-sm text-red-500">{error}</p>}
               </div>
 
-              <div className="flex gap-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+              <div className="flex gap-3 pt-4 border-t border-zinc-200 dark:border-zinc-800">
                 <Button variant="outline" className="flex-1 rounded-lg" onClick={() => setIsModalOpen(false)}>Cancel</Button>
                 <Button onClick={handleSave} className="flex-1 rounded-lg" disabled={isLoading}>
                   {isLoading ? 'Saving...' : 'Save Room'}
