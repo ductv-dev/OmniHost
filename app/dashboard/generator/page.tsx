@@ -15,6 +15,12 @@ export default async function GeneratorPage() {
     .select('*')
     .order('room_number')
 
+  const { data: commonTemplates } = await supabase
+    .from('common_templates')
+    .select('*')
+    .order('category')
+    .order('name')
+
   return (
     <div className="space-y-6">
       <div>
@@ -27,6 +33,7 @@ export default async function GeneratorPage() {
       <GeneratorClient 
         buildings={buildings || []} 
         rooms={rooms || []} 
+        commonTemplates={commonTemplates || []}
       />
     </div>
   )

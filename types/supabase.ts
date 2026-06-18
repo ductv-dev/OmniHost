@@ -54,6 +54,30 @@ export type Database = {
         }
         Relationships: []
       }
+      common_templates: {
+        Row: {
+          id: string
+          name: string
+          category: string
+          content: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          category: string
+          content: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          category?: string
+          content?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       rooms: {
         Row: {
           id: string

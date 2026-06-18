@@ -4,7 +4,7 @@ import React from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Building2, MessageSquare, LogOut } from 'lucide-react'
+import { Building2, FileText, MessageSquare, LogOut } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 export default function DashboardLayout({
@@ -17,6 +17,7 @@ export default function DashboardLayout({
   
   const navItems = [
     { href: '/dashboard/buildings', icon: Building2, label: 'Buildings' },
+    { href: '/dashboard/templates', icon: FileText, label: 'Templates' },
     { href: '/dashboard/generator', icon: MessageSquare, label: 'Messages' },
   ]
 

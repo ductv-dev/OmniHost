@@ -5,6 +5,7 @@
 -- Step 1: Drop tables
 -- ================================================================
 DROP TABLE IF EXISTS public.rooms CASCADE;
+DROP TABLE IF EXISTS public.common_templates CASCADE;
 DROP TABLE IF EXISTS public.buildings CASCADE;
 
 -- ================================================================
@@ -30,6 +31,15 @@ create table public.buildings (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
+-- Create Common Templates Table
+create table public.common_templates (
+  id uuid default uuid_generate_v4() primary key,
+  name text not null,
+  category text not null,
+  content text not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
 -- Create Rooms Table
 create table public.rooms (
   id uuid default uuid_generate_v4() primary key,
@@ -48,6 +58,7 @@ create table public.rooms (
 
 -- Enable Row Level Security (RLS)
 alter table public.buildings enable row level security;
+alter table public.common_templates enable row level security;
 alter table public.rooms enable row level security;
 
 -- Create Policies for Buildings (Authenticated Users Only)
@@ -72,6 +83,28 @@ create policy "Allow authenticated users to delete buildings"
   to authenticated
   using (true);
 
+-- Create Policies for Common Templates (Authenticated Users Only)
+create policy "Allow authenticated users to read common templates"
+  on public.common_templates for select
+  to authenticated
+  using (true);
+
+create policy "Allow authenticated users to insert common templates"
+  on public.common_templates for insert
+  to authenticated
+  with check (true);
+
+create policy "Allow authenticated users to update common templates"
+  on public.common_templates for update
+  to authenticated
+  using (true)
+  with check (true);
+
+create policy "Allow authenticated users to delete common templates"
+  on public.common_templates for delete
+  to authenticated
+  using (true);
+
 -- Create Policies for Rooms (Authenticated Users Only)
 create policy "Allow authenticated users to read rooms"
   on public.rooms for select
@@ -93,3 +126,6 @@ create policy "Allow authenticated users to delete rooms"
   on public.rooms for delete
   to authenticated
   using (true);
+
+-- Reload Supabase/PostgREST schema cache after resetting tables
+notify pgrst, 'reload schema';

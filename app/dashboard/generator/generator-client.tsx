@@ -37,13 +37,15 @@ function formatOrdinal(value: number | null | undefined) {
 export default function GeneratorClient({
   buildings,
   rooms,
+  commonTemplates,
 }: {
   buildings: Tables<'buildings'>[]
   rooms: Tables<'rooms'>[]
+  commonTemplates: Tables<'common_templates'>[]
 }) {
   const [selectedBuildingId, setSelectedBuildingId] = useState<string>('')
   const [selectedRoomId, setSelectedRoomId] = useState<string>('')
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
+  const [selectedTemplateKey, setSelectedTemplateKey] = useState<string>('')
   
   // Dynamic State for user inputs
   const [dynamicValues, setDynamicValues] = useState<Record<string, string>>({})
@@ -61,22 +63,52 @@ export default function GeneratorClient({
     return parseMessageTemplates(selectedBuilding.custom_templates)
   }, [selectedBuilding])
 
+  const commonMessageTemplates: MessageTemplate[] = useMemo(() => {
+    return commonTemplates.map(template => ({
+      id: template.id,
+      name: template.name,
+      category: template.category,
+      type: 'custom',
+      content: template.content,
+    }))
+  }, [commonTemplates])
+
   const selectedTemplate = useMemo(() => {
-    return buildingTemplates.find(t => t.id === selectedTemplateId) ?? null
-  }, [buildingTemplates, selectedTemplateId])
+    if (!selectedTemplateKey) return null
+
+    const [source, id] = selectedTemplateKey.split(':')
+    if (source === 'common') {
+      return commonMessageTemplates.find(template => template.id === id) ?? null
+    }
+
+    return buildingTemplates.find(template => template.id === id) ?? null
+  }, [buildingTemplates, commonMessageTemplates, selectedTemplateKey])
+
+  const selectedTemplateSource = selectedTemplateKey.startsWith('common:') ? 'common' : 'building'
 
   const selectedTemplateType = selectedTemplate?.type ?? 'building'
   const isCustomTemplate = selectedTemplateType === 'custom'
-  const canPreview = Boolean(selectedTemplate && (isCustomTemplate || selectedRoom))
+  const canPreview = Boolean(
+    selectedTemplate &&
+    (selectedTemplateSource === 'common' || isCustomTemplate || selectedRoom)
+  )
 
   // Group templates by category for the select dropdown
-  const groupedTemplates = useMemo(() => {
+  const groupedBuildingTemplates = useMemo(() => {
     return buildingTemplates.reduce((acc, tpl) => {
       if (!acc[tpl.category]) acc[tpl.category] = []
       acc[tpl.category].push(tpl)
       return acc
     }, {} as Record<string, MessageTemplate[]>)
   }, [buildingTemplates])
+
+  const groupedCommonTemplates = useMemo(() => {
+    return commonMessageTemplates.reduce((acc, tpl) => {
+      if (!acc[tpl.category]) acc[tpl.category] = []
+      acc[tpl.category].push(tpl)
+      return acc
+    }, {} as Record<string, MessageTemplate[]>)
+  }, [commonMessageTemplates])
 
   // 1. Get the raw template string
   const templateString = useMemo(() => {
@@ -94,12 +126,13 @@ export default function GeneratorClient({
 
   // 3. Generate the final message
   const generatedMessage = useMemo(() => {
-    if (!selectedTemplate || !selectedBuilding || !templateString) return ''
+    if (!selectedTemplate || !templateString) return ''
 
     if (selectedTemplate.type === 'custom') {
       return generateTemplateMessage(templateString, {}, dynamicValues)
     }
 
+    if (!selectedBuilding) return ''
     if (!selectedRoom) return ''
     
     // DB values that auto-fill
@@ -157,53 +190,60 @@ export default function GeneratorClient({
                 onChange={(e) => {
                   setSelectedBuildingId(e.target.value)
                   setSelectedRoomId('')
-                  setSelectedTemplateId('')
+                  if (selectedTemplateKey.startsWith('building:')) {
+                    setSelectedTemplateKey('')
+                  }
                   setDynamicValues({})
                 }}
               >
-                <option value="" disabled>Select a building</option>
+                <option value="">No building / common only</option>
                 {buildings.map((b) => (
                   <option key={b.id} value={b.id}>{b.name}</option>
                 ))}
               </select>
             </div>
 
-            <AnimatePresence>
-              {selectedBuilding && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="space-y-2 overflow-hidden"
-                >
-                  <Label>Template</Label>
-                  <select
-                    className="flex h-11 w-full rounded-lg border-0 bg-black/5 px-3 py-2 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
-                    value={selectedTemplateId}
-                    onChange={(e) => {
-                      const nextTemplateId = e.target.value
-                      const nextTemplate = buildingTemplates.find(t => t.id === nextTemplateId)
-                      setSelectedTemplateId(nextTemplateId)
-                      if (nextTemplate?.type === 'custom') {
-                        setSelectedRoomId('')
-                      }
-                      setDynamicValues({})
-                    }}
-                  >
-                    <option value="" disabled>Select a template</option>
-                    {Object.entries(groupedTemplates).map(([category, tpls]) => (
-                      <optgroup key={category} label={category.toUpperCase()}>
-                        {tpls.map(t => (
-                          <option key={t.id} value={t.id}>
-                            {t.type === 'custom' ? `${t.name} (custom)` : t.name}
-                          </option>
-                        ))}
-                      </optgroup>
+            <div className="space-y-2">
+              <Label>Template</Label>
+              <select
+                className="flex h-11 w-full rounded-lg border-0 bg-black/5 px-3 py-2 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
+                value={selectedTemplateKey}
+                onChange={(e) => {
+                  const nextTemplateKey = e.target.value
+                  const [source, id] = nextTemplateKey.split(':')
+                  const nextTemplate =
+                    source === 'common'
+                      ? commonMessageTemplates.find(template => template.id === id)
+                      : buildingTemplates.find(template => template.id === id)
+
+                  setSelectedTemplateKey(nextTemplateKey)
+                  if (source === 'common' || nextTemplate?.type === 'custom') {
+                    setSelectedRoomId('')
+                  }
+                  setDynamicValues({})
+                }}
+              >
+                <option value="" disabled>Select a template</option>
+                {Object.entries(groupedCommonTemplates).map(([category, tpls]) => (
+                  <optgroup key={`common-${category}`} label={`COMMON - ${category.toUpperCase()}`}>
+                    {tpls.map(template => (
+                      <option key={`common:${template.id}`} value={`common:${template.id}`}>
+                        {template.name}
+                      </option>
                     ))}
-                  </select>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                  </optgroup>
+                ))}
+                {selectedBuilding && Object.entries(groupedBuildingTemplates).map(([category, tpls]) => (
+                  <optgroup key={`building-${category}`} label={`${selectedBuilding.name.toUpperCase()} - ${category.toUpperCase()}`}>
+                    {tpls.map(template => (
+                      <option key={`building:${template.id}`} value={`building:${template.id}`}>
+                        {template.type === 'custom' ? `${template.name} (custom)` : template.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
 
             <div className="space-y-2">
               <Label>Room</Label>
@@ -211,10 +251,10 @@ export default function GeneratorClient({
                 className="flex h-11 w-full rounded-lg border-0 bg-black/5 px-3 py-2 text-sm transition-all disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
                 value={selectedRoomId}
                 onChange={(e) => setSelectedRoomId(e.target.value)}
-                disabled={!selectedBuildingId || isCustomTemplate}
+                disabled={!selectedBuildingId || selectedTemplateSource === 'common' || isCustomTemplate}
               >
                 <option value="" disabled>
-                  {isCustomTemplate ? 'Not needed for custom template' : 'Select a room'}
+                  {selectedTemplateSource === 'common' || isCustomTemplate ? 'Not needed for this template' : 'Select a room'}
                 </option>
                 {filteredRooms.map((r) => (
                   <option key={r.id} value={r.id}>{r.room_number}</option>
@@ -293,7 +333,7 @@ export default function GeneratorClient({
               </motion.div>
             ) : (
               <div className="flex min-h-[320px] items-center justify-center p-8 text-center text-sm text-zinc-500">
-                Choose a building, template, and room when required.
+                Choose a template, then select a building and room only when required.
               </div>
             )}
           </CardContent>

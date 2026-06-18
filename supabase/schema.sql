@@ -36,6 +36,15 @@ alter table public.buildings
   add column if not exists motorbike_parking_note text,
   add column if not exists custom_templates jsonb default '[]'::jsonb;
 
+-- Create Common Templates Table
+create table if not exists public.common_templates (
+  id uuid default uuid_generate_v4() primary key,
+  name text not null,
+  category text not null,
+  content text not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
 -- Create Rooms Table
 create table if not exists public.rooms (
   id uuid default uuid_generate_v4() primary key,
@@ -66,6 +75,7 @@ alter table public.rooms
 -- ================================================================
 
 alter table public.buildings enable row level security;
+alter table public.common_templates enable row level security;
 alter table public.rooms enable row level security;
 
 -- ================================================================
@@ -93,6 +103,34 @@ end $$;
 do $$ begin
   if not exists (select 1 from pg_policies where tablename='buildings' and policyname='Allow authenticated users to delete buildings') then
     create policy "Allow authenticated users to delete buildings" on public.buildings for delete to authenticated using (true);
+  end if;
+end $$;
+
+-- ================================================================
+-- RLS Policies - Common Templates
+-- ================================================================
+
+do $$ begin
+  if not exists (select 1 from pg_policies where tablename='common_templates' and policyname='Allow authenticated users to read common templates') then
+    create policy "Allow authenticated users to read common templates" on public.common_templates for select to authenticated using (true);
+  end if;
+end $$;
+
+do $$ begin
+  if not exists (select 1 from pg_policies where tablename='common_templates' and policyname='Allow authenticated users to insert common templates') then
+    create policy "Allow authenticated users to insert common templates" on public.common_templates for insert to authenticated with check (true);
+  end if;
+end $$;
+
+do $$ begin
+  if not exists (select 1 from pg_policies where tablename='common_templates' and policyname='Allow authenticated users to update common templates') then
+    create policy "Allow authenticated users to update common templates" on public.common_templates for update to authenticated using (true) with check (true);
+  end if;
+end $$;
+
+do $$ begin
+  if not exists (select 1 from pg_policies where tablename='common_templates' and policyname='Allow authenticated users to delete common templates') then
+    create policy "Allow authenticated users to delete common templates" on public.common_templates for delete to authenticated using (true);
   end if;
 end $$;
 
