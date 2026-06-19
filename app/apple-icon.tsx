@@ -12,19 +12,23 @@ export default function AppleIcon() {
     (
       <div
         style={{
-          alignItems: "center",
-          background: "#09090b",
-          color: "#fafafa",
-          display: "flex",
-          fontSize: 54,
-          fontWeight: 800,
-          height: "100%",
-          justifyContent: "center",
-          letterSpacing: 0,
           width: "100%",
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#09090b",
         }}
       >
-        OH
+        <div
+          style={{
+            width: "62%",
+            height: "62%",
+            background: "#fafafa",
+            clipPath:
+              "polygon(50% 0%, 100% 40%, 83% 40%, 83% 100%, 64% 100%, 64% 61%, 36% 61%, 36% 100%, 17% 100%, 17% 40%, 0% 40%)",
+          }}
+        />
       </div>
     ),
     size

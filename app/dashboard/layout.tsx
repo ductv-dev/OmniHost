@@ -3,7 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Building2, FileText, Home, MessageSquare, LogOut } from 'lucide-react'
+import { Building2, FileText, MessageSquare, LogOut } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -30,13 +30,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/95 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
           <div className="flex items-center justify-between">
             <Link href="/dashboard/generator" className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-zinc-950">
-                <Home className="size-5" />
+              <div className="flex size-10 items-center justify-center rounded-xl bg-zinc-950 dark:bg-white">
+                <svg
+                  className="size-5.5 text-white dark:text-zinc-950"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path d="M12 2.5L1.5 11H4V21H9.5V15.5H14.5V21H20V11H22.5Z" />
+                </svg>
               </div>
               <div>
-                <p className="text-base font-semibold leading-tight">OmniHost</p>
+                <p className="text-base font-semibold leading-tight tracking-tight">OmniHost</p>
                 <p className="text-xs text-zinc-500">
-                  {currentItem?.label || 'Mobile workspace'}
+                  {currentItem?.label ?? 'Quản lý tòa nhà'}
                 </p>
               </div>
             </Link>

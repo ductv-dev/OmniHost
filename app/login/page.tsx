@@ -52,7 +52,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-dvh items-end justify-center bg-zinc-100 px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] dark:bg-zinc-950 sm:items-center">
+    <div className="flex min-h-dvh items-end justify-center bg-zinc-100 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-4 sm:items-center dark:bg-zinc-950">
       <Card className="w-full max-w-[520px]">
         <CardHeader className="space-y-2 p-4 pb-3">
           <div className="mb-3 flex size-12 items-center justify-center rounded-lg bg-zinc-950 text-sm font-bold text-white dark:bg-white dark:text-zinc-950">
@@ -61,9 +61,7 @@ export default function LoginPage() {
           <CardTitle className="text-2xl font-bold tracking-tight">
             Welcome back
           </CardTitle>
-          <CardDescription>
-            Sign in to your mobile host workspace.
-          </CardDescription>
+          <CardDescription>Quên mật khẩu thì alo Đức </CardDescription>
         </CardHeader>
         <CardContent className="p-4 pt-0">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -95,7 +93,11 @@ export default function LoginPage() {
               </div>
             )}
 
-            <Button className="h-12 w-full rounded-lg text-base" type="submit" disabled={isLoading}>
+            <Button
+              className="h-12 w-full rounded-lg text-base"
+              type="submit"
+              disabled={isLoading}
+            >
               {isLoading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
