@@ -36,6 +36,14 @@ alter table public.buildings
   add column if not exists motorbike_parking_note text,
   add column if not exists custom_templates jsonb default '[]'::jsonb;
 
+-- Create Message Flows Table
+create table if not exists public.message_flows (
+  id uuid default uuid_generate_v4() primary key,
+  name text not null,
+  items jsonb default '[]'::jsonb,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
 -- Create Common Templates Table
 create table if not exists public.common_templates (
   id uuid default uuid_generate_v4() primary key,
@@ -103,6 +111,36 @@ end $$;
 do $$ begin
   if not exists (select 1 from pg_policies where tablename='buildings' and policyname='Allow authenticated users to delete buildings') then
     create policy "Allow authenticated users to delete buildings" on public.buildings for delete to authenticated using (true);
+  end if;
+end $$;
+
+-- ================================================================
+-- RLS Policies - Message Flows
+-- ================================================================
+
+alter table public.message_flows enable row level security;
+
+do $$ begin
+  if not exists (select 1 from pg_policies where tablename='message_flows' and policyname='Allow authenticated users to read message flows') then
+    create policy "Allow authenticated users to read message flows" on public.message_flows for select to authenticated using (true);
+  end if;
+end $$;
+
+do $$ begin
+  if not exists (select 1 from pg_policies where tablename='message_flows' and policyname='Allow authenticated users to insert message flows') then
+    create policy "Allow authenticated users to insert message flows" on public.message_flows for insert to authenticated with check (true);
+  end if;
+end $$;
+
+do $$ begin
+  if not exists (select 1 from pg_policies where tablename='message_flows' and policyname='Allow authenticated users to update message flows') then
+    create policy "Allow authenticated users to update message flows" on public.message_flows for update to authenticated using (true) with check (true);
+  end if;
+end $$;
+
+do $$ begin
+  if not exists (select 1 from pg_policies where tablename='message_flows' and policyname='Allow authenticated users to delete message flows') then
+    create policy "Allow authenticated users to delete message flows" on public.message_flows for delete to authenticated using (true);
   end if;
 end $$;
 

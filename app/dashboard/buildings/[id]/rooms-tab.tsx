@@ -7,17 +7,21 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { createRoom, updateRoom, deleteRoom } from './rooms-actions'
-import { motion, AnimatePresence } from 'framer-motion'
 import { Tables } from '@/types/supabase'
 
-export default function RoomsTab({ buildingId, initialRooms }: { buildingId: string, initialRooms: Tables<'rooms'>[] }) {
+export default function RoomsTab({
+  buildingId,
+  initialRooms,
+}: {
+  buildingId: string
+  initialRooms: Tables<'rooms'>[]
+}) {
   const [rooms] = useState(initialRooms)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingRoom, setEditingRoom] = useState<Tables<'rooms'> | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Form State
   const [roomNumber, setRoomNumber] = useState('')
   const [floor, setFloor] = useState('')
   const [lockboxPassword, setLockboxPassword] = useState('')
@@ -69,19 +73,13 @@ export default function RoomsTab({ buildingId, initialRooms }: { buildingId: str
     formData.append('dryer_floor', dryerFloor)
     formData.append('room_note', roomNote)
 
-    let result
-    if (editingRoom) {
-      result = await updateRoom(editingRoom.id, formData)
-    } else {
-      result = await createRoom(formData)
-    }
+    const result = editingRoom
+      ? await updateRoom(editingRoom.id, formData)
+      : await createRoom(formData)
 
     if (result?.error) {
       setError(result.error)
     } else {
-      // Reload rooms state manually for quick UX, or we can rely on router.refresh() 
-      // but router.refresh won't update local state if we don't sync.
-      // Since `actions` revalidate paths, we can just force a window reload or update locally.
       window.location.reload()
     }
     setIsLoading(false)
@@ -105,18 +103,29 @@ export default function RoomsTab({ buildingId, initialRooms }: { buildingId: str
 
       <div className="grid grid-cols-1 gap-3">
         {rooms.map(room => (
-          <Card key={room.id} className="group relative transition-colors hover:border-zinc-300 dark:hover:border-zinc-700">
+          <Card
+            key={room.id}
+            className="group relative transition-colors hover:border-zinc-300 dark:hover:border-zinc-700"
+          >
             <div className="absolute right-3 top-3 flex gap-1">
-              <button onClick={() => handleOpenModal(room)} className="rounded-lg bg-zinc-100 p-2 text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-zinc-950 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-50">
+              <button
+                onClick={() => handleOpenModal(room)}
+                className="rounded-lg bg-zinc-100 p-2 text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-zinc-950 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+              >
                 <Edit2 className="size-4" />
               </button>
-              <button onClick={() => handleDelete(room.id)} className="rounded-lg bg-red-500/10 p-2 text-red-500 transition-colors hover:bg-red-500/20">
+              <button
+                onClick={() => handleDelete(room.id)}
+                className="rounded-lg bg-red-500/10 p-2 text-red-500 transition-colors hover:bg-red-500/20"
+              >
                 <Trash2 className="size-4" />
               </button>
             </div>
             <CardHeader className="p-4 pb-3 pr-24">
               <CardTitle className="text-2xl">{room.room_number}</CardTitle>
-              <p className="text-xs font-medium text-muted-foreground uppercase">Floor {room.floor}</p>
+              <p className="text-xs font-medium uppercase text-muted-foreground">
+                Floor {room.floor}
+              </p>
             </CardHeader>
             <CardContent className="p-4 pt-0">
               <div className="space-y-1 text-sm text-muted-foreground">
@@ -137,80 +146,119 @@ export default function RoomsTab({ buildingId, initialRooms }: { buildingId: str
         </div>
       )}
 
-      {/* Modal / Form Sheet */}
-      <AnimatePresence>
-        {isModalOpen && (
-          <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center sm:p-4 bg-black/50 backdrop-blur-sm">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="max-h-[92dvh] w-full max-w-[520px] space-y-5 overflow-y-auto rounded-t-lg bg-white p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-2xl dark:bg-zinc-950 sm:rounded-lg"
-            >
-              <h2 className="text-xl font-semibold">{editingRoom ? 'Edit Room' : 'New Room'}</h2>
-              
+      {isModalOpen && (
+        <div className="fixed inset-0 z-200 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-4">
+          <div className="flex max-h-[92dvh] w-full max-w-130 flex-col rounded-t-2xl bg-white shadow-2xl dark:bg-zinc-950 sm:rounded-xl">
+            {/* header */}
+            <div className="shrink-0 px-4 pt-3 pb-3">
+              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-zinc-200 dark:bg-zinc-800 sm:hidden" />
+              <h2 className="text-lg font-semibold">
+                {editingRoom ? 'Sửa phòng' : 'Thêm phòng'}
+              </h2>
+            </div>
+
+            {/* scrollable body */}
+            <div className="flex-1 overflow-y-auto border-t border-zinc-100 px-4 py-4 dark:border-zinc-900">
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label>Room Number</Label>
-                    <Input value={roomNumber} onChange={e => setRoomNumber(e.target.value)} placeholder="e.g., 101" />
+                    <Label>Số phòng</Label>
+                    <Input
+                      value={roomNumber}
+                      onChange={e => setRoomNumber(e.target.value)}
+                      placeholder="VD: 101"
+                    />
                   </div>
                   <div className="space-y-2">
-                    <Label>Floor</Label>
-                    <Input type="number" value={floor} onChange={e => setFloor(e.target.value)} placeholder="1" />
+                    <Label>Tầng</Label>
+                    <Input
+                      type="number"
+                      value={floor}
+                      onChange={e => setFloor(e.target.value)}
+                      placeholder="1"
+                    />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Lockbox Password</Label>
-                  <Input value={lockboxPassword} onChange={e => setLockboxPassword(e.target.value)} placeholder="e.g., 1234" />
+                  <Label>Mã hộp khóa</Label>
+                  <Input
+                    value={lockboxPassword}
+                    onChange={e => setLockboxPassword(e.target.value)}
+                    placeholder="VD: 1234"
+                  />
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label>Wi-Fi Name</Label>
-                    <Input value={wifiName} onChange={e => setWifiName(e.target.value)} placeholder="Room 101 Wi-Fi" />
+                    <Label>Tên Wi-Fi</Label>
+                    <Input
+                      value={wifiName}
+                      onChange={e => setWifiName(e.target.value)}
+                      placeholder="Wi-Fi phòng 101"
+                    />
                   </div>
                   <div className="space-y-2">
-                    <Label>Wi-Fi Password</Label>
-                    <Input value={wifiPassword} onChange={e => setWifiPassword(e.target.value)} placeholder="88888888" />
+                    <Label>Mật khẩu Wi-Fi</Label>
+                    <Input
+                      value={wifiPassword}
+                      onChange={e => setWifiPassword(e.target.value)}
+                      placeholder="88888888"
+                    />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label>Washing Machine Floor</Label>
-                    <Input type="number" value={washingMachineFloor} onChange={e => setWashingMachineFloor(e.target.value)} placeholder="5" />
+                    <Label>Tầng máy giặt</Label>
+                    <Input
+                      type="number"
+                      value={washingMachineFloor}
+                      onChange={e => setWashingMachineFloor(e.target.value)}
+                      placeholder="5"
+                    />
                   </div>
                   <div className="space-y-2">
-                    <Label>Dryer Floor</Label>
-                    <Input type="number" value={dryerFloor} onChange={e => setDryerFloor(e.target.value)} placeholder="5" />
+                    <Label>Tầng máy sấy</Label>
+                    <Input
+                      type="number"
+                      value={dryerFloor}
+                      onChange={e => setDryerFloor(e.target.value)}
+                      placeholder="5"
+                    />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Room Note</Label>
+                  <Label>Ghi chú phòng</Label>
                   <textarea
                     value={roomNote}
                     onChange={e => setRoomNote(e.target.value)}
-                    placeholder="p101 and p501 use the washing machine and dryer on the 5th floor."
+                    placeholder="VD: p101 và p501 dùng máy giặt tầng 5."
                     className="flex min-h-24 w-full rounded-lg border-0 bg-black/5 px-4 py-3 text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
                   />
                 </div>
-                
+
                 {error && <p className="text-sm text-red-500">{error}</p>}
               </div>
+            </div>
 
-              <div className="flex gap-3 pt-4 border-t border-zinc-200 dark:border-zinc-800">
-                <Button variant="outline" className="flex-1 rounded-lg" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-                <Button onClick={handleSave} className="flex-1 rounded-lg" disabled={isLoading}>
-                  {isLoading ? 'Saving...' : 'Save Room'}
-                </Button>
-              </div>
-            </motion.div>
+            {/* sticky footer */}
+            <div className="shrink-0 grid grid-cols-2 gap-3 border-t border-zinc-200 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-zinc-800">
+              <Button
+                variant="outline"
+                className="h-12 rounded-xl"
+                onClick={() => setIsModalOpen(false)}
+              >
+                Hủy
+              </Button>
+              <Button onClick={handleSave} className="h-12 rounded-xl" disabled={isLoading}>
+                {isLoading ? 'Đang lưu...' : 'Lưu phòng'}
+              </Button>
+            </div>
           </div>
-        )}
-      </AnimatePresence>
+        </div>
+      )}
     </div>
   )
 }

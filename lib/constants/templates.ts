@@ -134,14 +134,14 @@ export const DB_VARIABLES: TemplateVariable[] = [
 export const KNOWN_VARIABLES = DB_VARIABLES.map(variable => variable.key)
 
 export const MANUAL_VARIABLE_SUGGESTIONS: TemplateVariable[] = [
-  { key: 'guest_name', label: 'Guest Name', description: 'Tên khách' },
-  { key: 'guest_phone', label: 'Guest Phone', description: 'Số điện thoại khách' },
-  { key: 'check_in_date', label: 'Check-in Date', description: 'Ngày nhận phòng' },
-  { key: 'check_out_date', label: 'Check-out Date', description: 'Ngày trả phòng' },
-  { key: 'guest_count', label: 'Guest Count', description: 'Số lượng khách' },
-  { key: 'check_in_time', label: 'Check-in Time', description: 'Giờ khách dự kiến đến' },
-  { key: 'price_per_night', label: 'Price', description: 'Giá phòng' },
-  { key: 'payment_status', label: 'Payment Status', description: 'Tình trạng thanh toán' },
+  { key: 'ten-khach', label: 'Tên khách', description: 'Tên khách' },
+  { key: 'so-dien-thoai', label: 'Số điện thoại', description: 'Số điện thoại khách' },
+  { key: 'ngay-nhan-phong', label: 'Ngày nhận phòng', description: 'Ngày check-in' },
+  { key: 'ngay-tra-phong', label: 'Ngày trả phòng', description: 'Ngày check-out' },
+  { key: 'so-khach', label: 'Số khách', description: 'Số lượng người' },
+  { key: 'gio-nhan-phong', label: 'Giờ nhận phòng', description: 'Giờ check-in dự kiến' },
+  { key: 'gia-phong', label: 'Giá phòng', description: 'Giá mỗi đêm' },
+  { key: 'tinh-trang-thanh-toan', label: 'Thanh toán', description: 'Tình trạng thanh toán' },
   { key: 'hotline', label: 'Hotline', description: 'Số hỗ trợ' },
 ]
 
@@ -243,7 +243,7 @@ export function getTemplateSyntaxIssues(template: string): string[] {
   }
 
   const invalidVariables = extractTemplateVariables(template).filter(
-    key => !/^[a-zA-Z][a-zA-Z0-9_]*$/.test(key)
+    key => !/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(key)
   )
 
   if (invalidVariables.length > 0) {
@@ -278,10 +278,10 @@ export function generateTemplateMessage(
   })
 }
 
-/** Chuyển snake_case thành Title Case để hiển thị label */
+/** Chuyển kebab-case / snake_case thành Title Case để hiển thị label */
 export function formatVariableLabel(key: string): string {
   return key
-    .split('_')
+    .split(/[-_]/)
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ')
 }

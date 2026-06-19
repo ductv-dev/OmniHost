@@ -1,142 +1,144 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Copy, CheckCircle2, MessageSquareText, Settings2 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import {
+  Copy, CheckCircle2, Plus, X, Search,
+  Building2, PenLine, ListOrdered,
+  ChevronUp, ChevronDown, Edit2, Trash2, Layers,
+} from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { 
-  generateTemplateMessage, 
-  MessageTemplate, 
-  extractDynamicVariables, 
+import {
+  generateTemplateMessage,
+  MessageTemplate,
+  extractDynamicVariables,
   formatVariableLabel,
   parseMessageTemplates,
 } from '@/lib/constants/templates'
-import { motion, AnimatePresence } from 'framer-motion'
 import { Tables } from '@/types/supabase'
+import {
+  createMessageFlow,
+  updateMessageFlow,
+  deleteMessageFlow,
+} from './actions'
+
+// ─── helpers ────────────────────────────────────────────────────────────────
 
 function formatOrdinal(value: number | null | undefined) {
-  if (value === null || value === undefined) return '...'
-
-  const lastTwoDigits = value % 100
-  if (lastTwoDigits >= 11 && lastTwoDigits <= 13) return `${value}th`
-
+  if (value == null) return '...'
+  const n = value % 100
+  if (n >= 11 && n <= 13) return `${value}th`
   switch (value % 10) {
-    case 1:
-      return `${value}st`
-    case 2:
-      return `${value}nd`
-    case 3:
-      return `${value}rd`
-    default:
-      return `${value}th`
+    case 1: return `${value}st`
+    case 2: return `${value}nd`
+    case 3: return `${value}rd`
+    default: return `${value}th`
   }
 }
 
+// ─── types ───────────────────────────────────────────────────────────────────
+
+interface FlowTemplateRef {
+  source: 'common' | 'building'
+  template_id: string
+}
+
+interface QueueItem {
+  id: string
+  templateId: string
+  templateName: string
+  message: string | null   // null = cần điền
+}
+
+function parseFlowItems(raw: unknown): FlowTemplateRef[] {
+  if (!Array.isArray(raw)) return []
+  return raw.filter(
+    (item): item is FlowTemplateRef =>
+      typeof item === 'object' && item !== null &&
+      'source' in item && 'template_id' in item
+  )
+}
+
+// ─── component ───────────────────────────────────────────────────────────────
+
 export default function GeneratorClient({
-  buildings,
-  rooms,
-  commonTemplates,
+  buildings, rooms, commonTemplates, initialFlows,
 }: {
   buildings: Tables<'buildings'>[]
   rooms: Tables<'rooms'>[]
   commonTemplates: Tables<'common_templates'>[]
+  initialFlows: Tables<'message_flows'>[]
 }) {
-  const [selectedBuildingId, setSelectedBuildingId] = useState<string>('')
-  const [selectedRoomId, setSelectedRoomId] = useState<string>('')
-  const [selectedTemplateKey, setSelectedTemplateKey] = useState<string>('')
-  
-  // Dynamic State for user inputs
+  // context
+  const [selectedBuildingId, setSelectedBuildingId] = useState('')
+  const [selectedRoomId, setSelectedRoomId] = useState('')
+
+  // tabs
+  const [activeTab, setActiveTab] = useState<'browse' | 'flows' | 'queue'>('browse')
+
+  // browse
+  const [searchQuery, setSearchQuery] = useState('')
+
+  // sheet (template fill panel)
+  const [sheetTemplate, setSheetTemplate] = useState<MessageTemplate | null>(null)
+  const [pendingQueueItemId, setPendingQueueItemId] = useState<string | null>(null)
   const [dynamicValues, setDynamicValues] = useState<Record<string, string>>({})
-  const [copied, setCopied] = useState(false)
+  const [sheetCopied, setSheetCopied] = useState(false)
 
-  const filteredRooms = useMemo(() => {
-    return rooms.filter(room => room.building_id === selectedBuildingId)
-  }, [rooms, selectedBuildingId])
+  // queue
+  const [queue, setQueue] = useState<QueueItem[]>([])
+  const [copiedQueueId, setCopiedQueueId] = useState<string | null>(null)
 
+  // flows local state
+  const [flows, setFlows] = useState(initialFlows)
+
+  // flow editor modal
+  const [flowModalOpen, setFlowModalOpen] = useState(false)
+  const [editingFlow, setEditingFlow] = useState<Tables<'message_flows'> | null>(null)
+  const [flowName, setFlowName] = useState('')
+  const [flowItems, setFlowItems] = useState<FlowTemplateRef[]>([])
+  const [flowSearch, setFlowSearch] = useState('')
+  const [isSavingFlow, setIsSavingFlow] = useState(false)
+  const [flowError, setFlowError] = useState<string | null>(null)
+
+  // ── derived ──────────────────────────────────────────────────────────────
+
+  const filteredRooms = useMemo(
+    () => rooms.filter(r => r.building_id === selectedBuildingId),
+    [rooms, selectedBuildingId]
+  )
   const selectedBuilding = buildings.find(b => b.id === selectedBuildingId)
   const selectedRoom = rooms.find(r => r.id === selectedRoomId)
 
-  const buildingTemplates: MessageTemplate[] = useMemo(() => {
-    if (!selectedBuilding) return []
-    return parseMessageTemplates(selectedBuilding.custom_templates)
-  }, [selectedBuilding])
-
-  const commonMessageTemplates: MessageTemplate[] = useMemo(() => {
-    return commonTemplates.map(template => ({
-      id: template.id,
-      name: template.name,
-      category: template.category,
-      type: 'custom',
-      content: template.content,
+  const allTemplates = useMemo(() => {
+    const building: MessageTemplate[] = selectedBuilding
+      ? parseMessageTemplates(selectedBuilding.custom_templates)
+      : []
+    const common: MessageTemplate[] = commonTemplates.map(t => ({
+      id: t.id, name: t.name, category: t.category, type: 'custom' as const, content: t.content,
     }))
-  }, [commonTemplates])
+    return [...building, ...common]
+  }, [selectedBuilding, commonTemplates])
 
-  const selectedTemplate = useMemo(() => {
-    if (!selectedTemplateKey) return null
+  const filteredBrowseTemplates = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim()
+    if (!q) return allTemplates
+    return allTemplates.filter(
+      t => t.name.toLowerCase().includes(q) || t.category.toLowerCase().includes(q)
+    )
+  }, [allTemplates, searchQuery])
 
-    const [source, id] = selectedTemplateKey.split(':')
-    if (source === 'common') {
-      return commonMessageTemplates.find(template => template.id === id) ?? null
-    }
-
-    return buildingTemplates.find(template => template.id === id) ?? null
-  }, [buildingTemplates, commonMessageTemplates, selectedTemplateKey])
-
-  const selectedTemplateSource = selectedTemplateKey.startsWith('common:') ? 'common' : 'building'
-
-  const selectedTemplateType = selectedTemplate?.type ?? 'building'
-  const isCustomTemplate = selectedTemplateType === 'custom'
-  const canPreview = Boolean(
-    selectedTemplate &&
-    (selectedTemplateSource === 'common' || isCustomTemplate || selectedRoom)
-  )
-
-  // Group templates by category for the select dropdown
-  const groupedBuildingTemplates = useMemo(() => {
-    return buildingTemplates.reduce((acc, tpl) => {
-      if (!acc[tpl.category]) acc[tpl.category] = []
-      acc[tpl.category].push(tpl)
+  const groupedBrowseTemplates = useMemo(() =>
+    filteredBrowseTemplates.reduce((acc, t) => {
+      if (!acc[t.category]) acc[t.category] = []
+      acc[t.category].push(t)
       return acc
     }, {} as Record<string, MessageTemplate[]>)
-  }, [buildingTemplates])
+  , [filteredBrowseTemplates])
 
-  const groupedCommonTemplates = useMemo(() => {
-    return commonMessageTemplates.reduce((acc, tpl) => {
-      if (!acc[tpl.category]) acc[tpl.category] = []
-      acc[tpl.category].push(tpl)
-      return acc
-    }, {} as Record<string, MessageTemplate[]>)
-  }, [commonMessageTemplates])
-
-  // 1. Get the raw template string
-  const templateString = useMemo(() => {
-    return selectedTemplate?.content ?? ''
-  }, [selectedTemplate])
-
-  // 2. Extract dynamic variables from the template string
-  const dynamicKeys = useMemo(() => {
-    return extractDynamicVariables(templateString, selectedTemplateType)
-  }, [templateString, selectedTemplateType])
-
-  const handleDynamicChange = (key: string, value: string) => {
-    setDynamicValues(prev => ({ ...prev, [key]: value }))
-  }
-
-  // 3. Generate the final message
-  const generatedMessage = useMemo(() => {
-    if (!selectedTemplate || !templateString) return ''
-
-    if (selectedTemplate.type === 'custom') {
-      return generateTemplateMessage(templateString, {}, dynamicValues)
-    }
-
-    if (!selectedBuilding) return ''
-    if (!selectedRoom) return ''
-    
-    // DB values that auto-fill
-    const dbVariables: Record<string, string> = {
+  const dbVariables = useMemo((): Record<string, string> => {
+    if (!selectedBuilding || !selectedRoom) return {}
+    return {
       building_name: selectedBuilding.name,
       building_sign_name: selectedBuilding.sign_name || 'N/A',
       building_address: selectedBuilding.address,
@@ -158,197 +160,694 @@ export default function GeneratorClient({
       room_note: selectedRoom.room_note || '',
       motorbike_parking_note: selectedBuilding.motorbike_parking_note || '',
     }
-    
-    return generateTemplateMessage(templateString, dbVariables, dynamicValues)
-  }, [selectedBuilding, selectedRoom, selectedTemplate, templateString, dynamicValues])
+  }, [selectedBuilding, selectedRoom])
 
-  const handleCopy = async () => {
-    if (!generatedMessage) return
-    try {
-      await navigator.clipboard.writeText(generatedMessage)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch (err) {
-      console.error('Failed to copy text: ', err)
-    }
+  const sheetDynamicKeys = useMemo(() => {
+    if (!sheetTemplate) return []
+    return extractDynamicVariables(sheetTemplate.content, sheetTemplate.type)
+  }, [sheetTemplate])
+
+  const canGenerate = Boolean(
+    sheetTemplate &&
+    (sheetTemplate.type === 'custom' || (selectedBuilding && selectedRoom))
+  )
+
+  const sheetMessage = useMemo(() => {
+    if (!sheetTemplate) return ''
+    if (sheetTemplate.type === 'custom')
+      return generateTemplateMessage(sheetTemplate.content, {}, dynamicValues)
+    if (!selectedBuilding || !selectedRoom) return ''
+    return generateTemplateMessage(sheetTemplate.content, dbVariables, dynamicValues)
+  }, [sheetTemplate, dynamicValues, dbVariables, selectedBuilding, selectedRoom])
+
+  const hasUnfilledPlaceholders = useMemo(
+    () => /\{\{[^}]+\}\}/.test(sheetMessage),
+    [sheetMessage]
+  )
+
+  // flow editor: templates matching search
+  const filteredFlowTemplates = useMemo(() => {
+    const q = flowSearch.toLowerCase().trim()
+    if (!q) return allTemplates
+    return allTemplates.filter(
+      t => t.name.toLowerCase().includes(q) || t.category.toLowerCase().includes(q)
+    )
+  }, [allTemplates, flowSearch])
+
+  const groupedFlowTemplates = useMemo(() =>
+    filteredFlowTemplates.reduce((acc, t) => {
+      if (!acc[t.category]) acc[t.category] = []
+      acc[t.category].push(t)
+      return acc
+    }, {} as Record<string, MessageTemplate[]>)
+  , [filteredFlowTemplates])
+
+  // ── sheet handlers ────────────────────────────────────────────────────────
+
+  const openSheet = (template: MessageTemplate, pendingId?: string) => {
+    setSheetTemplate(template)
+    setPendingQueueItemId(pendingId ?? null)
+    setDynamicValues({})
+    setSheetCopied(false)
   }
 
+  const closeSheet = () => {
+    setSheetTemplate(null)
+    setPendingQueueItemId(null)
+    setDynamicValues({})
+  }
+
+  const confirmSheetMessage = () => {
+    if (!sheetMessage || !sheetTemplate) return
+    const finalMessage = hasUnfilledPlaceholders ? null : sheetMessage
+    if (pendingQueueItemId) {
+      setQueue(prev => prev.map(item =>
+        item.id === pendingQueueItemId ? { ...item, message: finalMessage } : item
+      ))
+    } else {
+      setQueue(prev => [...prev, {
+        id: crypto.randomUUID(),
+        templateId: sheetTemplate.id,
+        templateName: sheetTemplate.name,
+        message: finalMessage,
+      }])
+      setActiveTab('queue')
+    }
+    closeSheet()
+  }
+
+  const copySheetMessage = async () => {
+    if (!sheetMessage) return
+    await navigator.clipboard.writeText(sheetMessage)
+    setSheetCopied(true)
+    setTimeout(() => setSheetCopied(false), 2000)
+  }
+
+  // ── queue handlers ────────────────────────────────────────────────────────
+
+  const copyQueueItem = async (item: QueueItem) => {
+    if (!item.message) return
+    await navigator.clipboard.writeText(item.message)
+    setCopiedQueueId(item.id)
+    setTimeout(() => setCopiedQueueId(null), 2000)
+  }
+
+  const moveQueueItem = (index: number, dir: 'up' | 'down') => {
+    const target = dir === 'up' ? index - 1 : index + 1
+    if (target < 0 || target >= queue.length) return
+    const next = [...queue]
+    ;[next[index], next[target]] = [next[target], next[index]]
+    setQueue(next)
+  }
+
+  // ── flow load ─────────────────────────────────────────────────────────────
+
+  const loadFlow = (flow: Tables<'message_flows'>) => {
+    const refs = parseFlowItems(flow.items)
+    const newItems: QueueItem[] = refs.flatMap(ref => {
+      const tpl = allTemplates.find(t => t.id === ref.template_id)
+      if (!tpl) return []
+      const dynKeys = extractDynamicVariables(tpl.content, tpl.type)
+      const canAuto = tpl.type === 'custom'
+        ? dynKeys.length === 0
+        : !!(selectedBuilding && selectedRoom && dynKeys.length === 0)
+      return [{
+        id: crypto.randomUUID(),
+        templateId: tpl.id,
+        templateName: tpl.name,
+        message: canAuto
+          ? generateTemplateMessage(tpl.content, tpl.type === 'building' ? dbVariables : {}, {})
+          : null,
+      }]
+    })
+    setQueue(newItems)
+    setActiveTab('queue')
+  }
+
+  // ── flow editor ───────────────────────────────────────────────────────────
+
+  const openFlowModal = (flow?: Tables<'message_flows'>) => {
+    setEditingFlow(flow ?? null)
+    setFlowName(flow?.name ?? '')
+    setFlowItems(flow ? parseFlowItems(flow.items) : [])
+    setFlowSearch('')
+    setFlowError(null)
+    setFlowModalOpen(true)
+  }
+
+  const addTemplateToFlow = (tpl: MessageTemplate) => {
+    const source: 'common' | 'building' = tpl.type === 'custom' ? 'common' : 'building'
+    setFlowItems(prev => [...prev, { source, template_id: tpl.id }])
+  }
+
+  const removeFlowItem = (index: number) => {
+    setFlowItems(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const moveFlowItem = (index: number, dir: 'up' | 'down') => {
+    const target = dir === 'up' ? index - 1 : index + 1
+    if (target < 0 || target >= flowItems.length) return
+    const next = [...flowItems]
+    ;[next[index], next[target]] = [next[target], next[index]]
+    setFlowItems(next)
+  }
+
+  const saveFlow = async () => {
+    if (!flowName.trim()) { setFlowError('Nhập tên luồng.'); return }
+    if (flowItems.length === 0) { setFlowError('Thêm ít nhất 1 template.'); return }
+
+    setIsSavingFlow(true)
+    setFlowError(null)
+
+    const formData = new FormData()
+    formData.append('name', flowName.trim())
+    formData.append('items', JSON.stringify(flowItems))
+
+    const result = editingFlow
+      ? await updateMessageFlow(editingFlow.id, formData)
+      : await createMessageFlow(formData)
+
+    if ('error' in result) {
+      setFlowError(result.error || 'Lỗi khi lưu luồng.')
+      setIsSavingFlow(false)
+      return
+    }
+
+    if (result.data) {
+      if (editingFlow) {
+        setFlows(prev => prev.map(f => f.id === editingFlow.id ? result.data! : f))
+      } else {
+        setFlows(prev => [...prev, result.data!])
+      }
+    }
+
+    setIsSavingFlow(false)
+    setFlowModalOpen(false)
+  }
+
+  const handleDeleteFlow = async (id: string) => {
+    if (!confirm('Xóa luồng này?')) return
+    const result = await deleteMessageFlow(id)
+    if ('error' in result) return
+    setFlows(prev => prev.filter(f => f.id !== id))
+  }
+
+  // ─── render ───────────────────────────────────────────────────────────────
+
+  const queuePendingCount = queue.filter(q => q.message === null).length
+
   return (
-    <div className="grid gap-4 pb-3">
-      <div className="space-y-4">
-        <Card className="rounded-lg">
-          <CardHeader className="p-4 pb-3">
-            <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-900">
-                <Settings2 className="size-5" />
-              </div>
-              <div>
-                <CardTitle>Setup</CardTitle>
-                <CardDescription>Pick only what this message needs.</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4 p-4 pt-0">
-            <div className="space-y-2">
-              <Label>Building</Label>
-              <select
-                className="flex h-12 w-full rounded-lg border-0 bg-black/5 px-3 py-2 text-base transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
-                value={selectedBuildingId}
-                onChange={(e) => {
-                  setSelectedBuildingId(e.target.value)
-                  setSelectedRoomId('')
-                  if (selectedTemplateKey.startsWith('building:')) {
-                    setSelectedTemplateKey('')
-                  }
-                  setDynamicValues({})
-                }}
-              >
-                <option value="">No building / common only</option>
-                {buildings.map((b) => (
-                  <option key={b.id} value={b.id}>{b.name}</option>
-                ))}
-              </select>
-            </div>
+    <div className="flex flex-col gap-4 pb-6">
 
-            <div className="space-y-2">
-              <Label>Template</Label>
-              <select
-                className="flex h-12 w-full rounded-lg border-0 bg-black/5 px-3 py-2 text-base font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
-                value={selectedTemplateKey}
-                onChange={(e) => {
-                  const nextTemplateKey = e.target.value
-                  const [source, id] = nextTemplateKey.split(':')
-                  const nextTemplate =
-                    source === 'common'
-                      ? commonMessageTemplates.find(template => template.id === id)
-                      : buildingTemplates.find(template => template.id === id)
+      {/* Context selectors */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tòa</p>
+          <select
+            className="flex h-11 w-full rounded-lg border-0 bg-black/5 px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
+            value={selectedBuildingId}
+            onChange={e => { setSelectedBuildingId(e.target.value); setSelectedRoomId('') }}
+          >
+            <option value="">Chỉ template chung</option>
+            {buildings.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Phòng</p>
+          <select
+            className="flex h-11 w-full rounded-lg border-0 bg-black/5 px-3 text-sm disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
+            value={selectedRoomId}
+            onChange={e => setSelectedRoomId(e.target.value)}
+            disabled={!selectedBuildingId}
+          >
+            <option value="">Chọn phòng</option>
+            {filteredRooms.map(r => <option key={r.id} value={r.id}>{r.room_number}</option>)}
+          </select>
+        </div>
+      </div>
 
-                  setSelectedTemplateKey(nextTemplateKey)
-                  if (source === 'common' || nextTemplate?.type === 'custom') {
-                    setSelectedRoomId('')
-                  }
-                  setDynamicValues({})
-                }}
-              >
-                <option value="" disabled>Select a template</option>
-                {Object.entries(groupedCommonTemplates).map(([category, tpls]) => (
-                  <optgroup key={`common-${category}`} label={`COMMON - ${category.toUpperCase()}`}>
-                    {tpls.map(template => (
-                      <option key={`common:${template.id}`} value={`common:${template.id}`}>
-                        {template.name}
-                      </option>
+      {/* Tabs */}
+      <div className="flex rounded-lg bg-zinc-100 p-1 dark:bg-zinc-900">
+        {([
+          { id: 'browse', label: 'Template' },
+          { id: 'flows', label: `Luồng${flows.length ? ` (${flows.length})` : ''}` },
+          { id: 'queue', label: `Hàng${queue.length ? ` (${queue.length})` : ''}` },
+        ] as const).map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex-1 rounded-md py-2.5 text-sm font-semibold transition-colors ${
+              activeTab === tab.id
+                ? 'bg-white text-zinc-950 shadow-sm dark:bg-zinc-800 dark:text-zinc-50'
+                : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Browse tab ── */}
+      {activeTab === 'browse' && (
+        <div className="space-y-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Tìm template..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="flex h-11 w-full rounded-lg border-0 bg-black/5 pl-9 pr-4 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
+            />
+          </div>
+
+          {Object.keys(groupedBrowseTemplates).length === 0 ? (
+            <div className="rounded-lg border border-dashed border-zinc-300 py-10 text-center text-sm text-muted-foreground dark:border-zinc-800">
+              {searchQuery ? 'Không tìm thấy template.' : 'Chưa có template. Chọn tòa hoặc thêm template chung.'}
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {Object.entries(groupedBrowseTemplates).map(([cat, tpls]) => (
+                <div key={cat} className="space-y-2">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{cat}</h3>
+                  <div className="space-y-2">
+                    {tpls.map(tpl => (
+                      <button
+                        key={tpl.id}
+                        onClick={() => openSheet(tpl)}
+                        className="w-full rounded-lg border border-zinc-200 bg-white p-3.5 text-left transition-colors hover:border-zinc-300 hover:bg-zinc-50 active:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-zinc-700 dark:hover:bg-zinc-900"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="mb-1.5 flex items-center gap-1.5">
+                              {tpl.type === 'building' ? (
+                                <span className="inline-flex items-center gap-1 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
+                                  <Building2 className="size-2.5" /> Building
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
+                                  <PenLine className="size-2.5" /> Common
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm font-semibold leading-tight">{tpl.name}</p>
+                            <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                              {tpl.content.replace(/\{\{[^}]+\}\}/g, '…')}
+                            </p>
+                          </div>
+                          <Plus className="mt-0.5 size-4 shrink-0 text-zinc-400" />
+                        </div>
+                      </button>
                     ))}
-                  </optgroup>
-                ))}
-                {selectedBuilding && Object.entries(groupedBuildingTemplates).map(([category, tpls]) => (
-                  <optgroup key={`building-${category}`} label={`${selectedBuilding.name.toUpperCase()} - ${category.toUpperCase()}`}>
-                    {tpls.map(template => (
-                      <option key={`building:${template.id}`} value={`building:${template.id}`}>
-                        {template.type === 'custom' ? `${template.name} (custom)` : template.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
+                  </div>
+                </div>
+              ))}
             </div>
-
-            <div className="space-y-2">
-              <Label>Room</Label>
-              <select
-                className="flex h-12 w-full rounded-lg border-0 bg-black/5 px-3 py-2 text-base transition-all disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
-                value={selectedRoomId}
-                onChange={(e) => setSelectedRoomId(e.target.value)}
-                disabled={!selectedBuildingId || selectedTemplateSource === 'common' || isCustomTemplate}
-              >
-                <option value="" disabled>
-                  {selectedTemplateSource === 'common' || isCustomTemplate ? 'Not needed for this template' : 'Select a room'}
-                </option>
-                {filteredRooms.map((r) => (
-                  <option key={r.id} value={r.id}>{r.room_number}</option>
-                ))}
-              </select>
-            </div>
-          </CardContent>
-        </Card>
-
-        <AnimatePresence>
-          {dynamicKeys.length > 0 && canPreview && (
-            <motion.div
-              layout
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-            >
-              <Card className="rounded-lg">
-                <CardHeader className="p-4 pb-3">
-                  <CardTitle>Manual Fields</CardTitle>
-                  <CardDescription>Fill only changing guest details.</CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-4 p-4 pt-0">
-                  {dynamicKeys.map((key) => (
-                    <motion.div
-                      key={key}
-                      layout
-                      initial={{ scale: 0.98, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      className="space-y-2"
-                    >
-                      <Label>{formatVariableLabel(key)}</Label>
-                      <Input
-                        placeholder={`Enter ${formatVariableLabel(key).toLowerCase()}...`}
-                        value={dynamicValues[key] || ''}
-                        onChange={(e) => handleDynamicChange(key, e.target.value)}
-                      />
-                    </motion.div>
-                  ))}
-                </CardContent>
-              </Card>
-            </motion.div>
           )}
-        </AnimatePresence>
-      </div>
+        </div>
+      )}
 
-      <div>
-        <Card className="min-h-[380px] rounded-lg">
-          <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-zinc-200 p-4 dark:border-zinc-800">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <MessageSquareText className="size-4 text-zinc-500" />
-                <CardTitle>Preview</CardTitle>
-              </div>
-              <CardDescription>
-                {selectedTemplate ? selectedTemplate.name : 'Select a template to generate a reply.'}
-              </CardDescription>
+      {/* ── Flows tab ── */}
+      {activeTab === 'flows' && (
+        <div className="space-y-3">
+          <Button onClick={() => openFlowModal()} className="h-12 w-full rounded-lg">
+            <Plus className="mr-2 size-4" /> Tạo luồng mới
+          </Button>
+
+          {flows.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-zinc-300 py-12 text-center dark:border-zinc-800">
+              <Layers className="mx-auto mb-2 size-6 text-muted-foreground opacity-40" />
+              <p className="text-sm text-muted-foreground">Chưa có luồng nào.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Tạo luồng để gửi nhanh nhiều tin nhắn.</p>
             </div>
-            <Button size="lg" onClick={handleCopy} disabled={!generatedMessage} className="h-11 shrink-0 rounded-lg px-4">
-              {copied ? (
-                <>
-                  <CheckCircle2 className="size-4" /> Copied
-                </>
-              ) : (
-                <>
-                  <Copy className="size-4" /> Copy
-                </>
+          ) : (
+            <div className="space-y-3">
+              {flows.map(flow => {
+                const items = parseFlowItems(flow.items)
+                return (
+                  <div key={flow.id} className="rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+                    <div className="flex items-center gap-3 p-4">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold leading-tight">{flow.name}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {items.length} tin nhắn
+                          {items.length > 0 && (
+                            <span> · {items.map(ref => {
+                              const tpl = allTemplates.find(t => t.id === ref.template_id)
+                              return tpl?.name ?? '?'
+                            }).slice(0, 3).join(', ')}{items.length > 3 ? '…' : ''}</span>
+                          )}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <button
+                          onClick={() => openFlowModal(flow)}
+                          className="rounded-lg bg-zinc-100 p-2 text-zinc-500 transition-colors hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+                        >
+                          <Edit2 className="size-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteFlow(flow.id)}
+                          className="rounded-lg bg-red-500/10 p-2 text-red-500 transition-colors hover:bg-red-500/20"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="border-t border-zinc-100 px-4 py-3 dark:border-zinc-900">
+                      <Button
+                        className="h-9 w-full rounded-lg text-sm"
+                        onClick={() => loadFlow(flow)}
+                        disabled={items.length === 0}
+                      >
+                        Tải vào hàng gửi
+                      </Button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Queue tab ── */}
+      {activeTab === 'queue' && (
+        <div className="space-y-3">
+          {queue.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-zinc-300 py-12 text-center dark:border-zinc-800">
+              <ListOrdered className="mx-auto mb-2 size-6 text-muted-foreground opacity-40" />
+              <p className="text-sm text-muted-foreground">Chưa có tin nhắn.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Chọn template hoặc tải một luồng.</p>
+            </div>
+          ) : (
+            <>
+              {queuePendingCount > 0 && (
+                <div className="rounded-lg bg-amber-50 p-3 text-xs font-medium text-amber-700 dark:bg-amber-900/20 dark:text-amber-400">
+                  {queuePendingCount} tin nhắn cần điền thông tin trước khi gửi.
+                </div>
               )}
-            </Button>
-          </CardHeader>
-          <CardContent className="p-0">
-            {generatedMessage ? (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="whitespace-pre-wrap p-4 text-[15px] leading-7"
-              >
-                {generatedMessage}
-              </motion.div>
-            ) : (
-              <div className="flex min-h-[320px] items-center justify-center p-8 text-center text-sm text-zinc-500">
-                Choose a template, then select a building and room only when required.
+
+              <div className="space-y-2">
+                {queue.map((item, index) => (
+                  <div
+                    key={item.id}
+                    className={`rounded-lg border bg-white dark:bg-zinc-950 ${
+                      item.message === null
+                        ? 'border-amber-200 dark:border-amber-800/50'
+                        : 'border-zinc-200 dark:border-zinc-800'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 border-b border-zinc-100 px-3 py-2.5 dark:border-zinc-900">
+                      <div className="flex flex-col">
+                        <button
+                          onClick={() => moveQueueItem(index, 'up')}
+                          disabled={index === 0}
+                          className="rounded p-0.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-20 dark:hover:bg-zinc-900"
+                        >
+                          <ChevronUp className="size-3.5" />
+                        </button>
+                        <button
+                          onClick={() => moveQueueItem(index, 'down')}
+                          disabled={index === queue.length - 1}
+                          className="rounded p-0.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-20 dark:hover:bg-zinc-900"
+                        >
+                          <ChevronDown className="size-3.5" />
+                        </button>
+                      </div>
+                      <span className="text-xs font-semibold tabular-nums text-zinc-400">{index + 1}</span>
+                      <span className="flex-1 truncate text-sm font-semibold">{item.templateName}</span>
+
+                      {item.message === null ? (
+                        <button
+                          onClick={() => {
+                            const tpl = allTemplates.find(t => t.id === item.templateId)
+                            if (tpl) openSheet(tpl, item.id)
+                          }}
+                          className="flex items-center gap-1.5 rounded-md bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-amber-600"
+                        >
+                          Điền →
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => copyQueueItem(item)}
+                          className="flex items-center gap-1.5 rounded-md bg-zinc-950 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-zinc-700 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+                        >
+                          {copiedQueueId === item.id
+                            ? <><CheckCircle2 className="size-3" /> Đã copy</>
+                            : <><Copy className="size-3" /> Copy</>
+                          }
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => setQueue(prev => prev.filter(q => q.id !== item.id))}
+                        className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-900"
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    </div>
+
+                    {item.message !== null ? (
+                      <p className="line-clamp-3 wrap-break-word whitespace-pre-wrap px-4 py-3 text-xs leading-relaxed text-muted-foreground">
+                        {item.message}
+                      </p>
+                    ) : (
+                      <p className="px-4 py-3 text-xs italic text-amber-600 dark:text-amber-400">
+                        Chưa điền thông tin — bấm &quot;Điền →&quot; để hoàn thiện.
+                      </p>
+                    )}
+                  </div>
+                ))}
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+
+              <Button variant="outline" className="w-full rounded-lg" onClick={() => setQueue([])}>
+                Xóa hết
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Template Sheet ── */}
+      {sheetTemplate && (
+        <div
+          className="fixed inset-0 z-200 flex items-end justify-center bg-black/50 backdrop-blur-sm"
+          onClick={e => { if (e.target === e.currentTarget) closeSheet() }}
+        >
+          <div className="flex max-h-[92dvh] w-full max-w-130 flex-col rounded-t-2xl bg-white shadow-2xl dark:bg-zinc-950">
+            {/* pill */}
+            <div className="flex shrink-0 justify-center pt-3 pb-1">
+              <div className="h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-700" />
+            </div>
+            {/* header */}
+            <div className="flex shrink-0 items-center justify-between px-4 pb-3 pt-1">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {sheetTemplate.category}
+                </p>
+                <h3 className="text-base font-semibold leading-tight">{sheetTemplate.name}</h3>
+              </div>
+              <button onClick={closeSheet} className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900">
+                <X className="size-5" />
+              </button>
+            </div>
+
+            {/* scrollable body */}
+            <div className="flex-1 overflow-y-auto border-t border-zinc-100 px-4 py-4 dark:border-zinc-900">
+              <div className="space-y-4">
+                {sheetTemplate.type === 'building' && (!selectedBuilding || !selectedRoom) && (
+                  <div className="rounded-lg bg-amber-50 p-3 text-xs font-medium text-amber-700 dark:bg-amber-900/20 dark:text-amber-400">
+                    Chọn tòa và phòng ở trên để tự điền thông tin.
+                  </div>
+                )}
+
+                {sheetDynamicKeys.length > 0 && (
+                  <div className="space-y-3">
+                    <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Điền vào</p>
+                    {sheetDynamicKeys.map(key => (
+                      <div key={key} className="space-y-1.5">
+                        <label className="text-sm font-medium">{formatVariableLabel(key)}</label>
+                        <Input
+                          placeholder={`Nhập ${formatVariableLabel(key).toLowerCase()}...`}
+                          value={dynamicValues[key] || ''}
+                          onChange={e => setDynamicValues(prev => ({ ...prev, [key]: e.target.value }))}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {canGenerate && (
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Xem trước</p>
+                    <div className="max-h-52 overflow-y-auto rounded-lg bg-black/5 p-3.5 dark:bg-white/5">
+                      <p className="wrap-break-word whitespace-pre-wrap text-sm leading-7 text-zinc-800 dark:text-zinc-200">
+                        {sheetMessage || (
+                          <span className="italic text-muted-foreground">Tin nhắn hiện ở đây…</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* sticky actions */}
+            <div className="shrink-0 grid grid-cols-2 gap-3 border-t border-zinc-100 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-zinc-900">
+              <Button variant="outline" className="h-12 rounded-xl" disabled={!sheetMessage || hasUnfilledPlaceholders} onClick={copySheetMessage}>
+                {sheetCopied ? <><CheckCircle2 className="mr-2 size-4" /> Đã copy</> : <><Copy className="mr-2 size-4" /> Copy ngay</>}
+              </Button>
+              <Button className="h-12 rounded-xl" disabled={!sheetMessage} onClick={confirmSheetMessage}>
+                {pendingQueueItemId ? 'Xác nhận' : <><Plus className="mr-2 size-4" /> Thêm vào hàng</>}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Flow Editor Modal ── */}
+      {flowModalOpen && (
+        <div className="fixed inset-0 z-200 flex items-end justify-center bg-black/50 backdrop-blur-sm">
+          <div className="flex max-h-[92dvh] w-full max-w-130 flex-col rounded-t-2xl bg-white shadow-2xl dark:bg-zinc-950">
+            {/* pill */}
+            <div className="flex shrink-0 justify-center pt-3 pb-1">
+              <div className="h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-700" />
+            </div>
+            {/* header */}
+            <div className="flex shrink-0 items-center justify-between px-4 pb-3 pt-1">
+              <h3 className="text-base font-semibold">
+                {editingFlow ? 'Chỉnh sửa luồng' : 'Tạo luồng mới'}
+              </h3>
+              <button onClick={() => setFlowModalOpen(false)} className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900">
+                <X className="size-5" />
+              </button>
+            </div>
+
+            {/* scrollable body */}
+            <div className="flex-1 overflow-y-auto border-t border-zinc-100 px-4 py-4 dark:border-zinc-900">
+              <div className="space-y-5">
+                {/* name */}
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold">Tên luồng</label>
+                  <Input
+                    value={flowName}
+                    onChange={e => setFlowName(e.target.value)}
+                    placeholder="VD: Check-in standard, Nhắc check-out..."
+                  />
+                </div>
+
+                {/* current flow items */}
+                <div className="space-y-2">
+                  <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                    Tin nhắn trong luồng ({flowItems.length})
+                  </p>
+                  {flowItems.length === 0 ? (
+                    <p className="rounded-lg border border-dashed border-zinc-200 py-4 text-center text-xs text-muted-foreground dark:border-zinc-800">
+                      Chưa có. Thêm từ danh sách bên dưới.
+                    </p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {flowItems.map((ref, index) => {
+                        const tpl = allTemplates.find(t => t.id === ref.template_id)
+                        return (
+                          <div key={index} className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-900">
+                            <div className="flex flex-col">
+                              <button
+                                onClick={() => moveFlowItem(index, 'up')}
+                                disabled={index === 0}
+                                className="rounded p-0.5 text-zinc-400 hover:bg-zinc-200 disabled:opacity-20 dark:hover:bg-zinc-800"
+                              >
+                                <ChevronUp className="size-3.5" />
+                              </button>
+                              <button
+                                onClick={() => moveFlowItem(index, 'down')}
+                                disabled={index === flowItems.length - 1}
+                                className="rounded p-0.5 text-zinc-400 hover:bg-zinc-200 disabled:opacity-20 dark:hover:bg-zinc-800"
+                              >
+                                <ChevronDown className="size-3.5" />
+                              </button>
+                            </div>
+                            <span className="text-xs font-semibold tabular-nums text-zinc-400">{index + 1}</span>
+                            <span className="flex-1 truncate text-sm font-medium">
+                              {tpl?.name ?? <span className="italic text-red-500">Template không tồn tại</span>}
+                            </span>
+                            <button
+                              onClick={() => removeFlowItem(index)}
+                              className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-700 dark:hover:bg-zinc-700"
+                            >
+                              <X className="size-3.5" />
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* template picker */}
+                <div className="space-y-3">
+                  <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Thêm template</p>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      type="text"
+                      placeholder="Tìm template..."
+                      value={flowSearch}
+                      onChange={e => setFlowSearch(e.target.value)}
+                      className="flex h-10 w-full rounded-lg border-0 bg-black/5 pl-9 pr-4 text-sm focus-visible:outline-none dark:bg-white/10"
+                    />
+                  </div>
+
+                  {allTemplates.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      Chọn tòa ở trên hoặc thêm template chung để hiện danh sách.
+                    </p>
+                  ) : (
+                    <div className="space-y-4">
+                      {Object.entries(groupedFlowTemplates).map(([cat, tpls]) => (
+                        <div key={cat} className="space-y-1.5">
+                          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{cat}</h4>
+                          {tpls.map(tpl => (
+                            <button
+                              key={tpl.id}
+                              onClick={() => addTemplateToFlow(tpl)}
+                              className="flex w-full items-center gap-3 rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-left transition-colors hover:bg-zinc-50 active:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:bg-zinc-900"
+                            >
+                              <Plus className="size-4 shrink-0 text-zinc-400" />
+                              <span className="flex-1 truncate text-sm font-medium">{tpl.name}</span>
+                              {tpl.type === 'building' ? (
+                                <span className="text-[10px] font-semibold text-zinc-400">Building</span>
+                              ) : (
+                                <span className="text-[10px] font-semibold text-zinc-400">Common</span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* sticky footer */}
+            <div className="shrink-0 border-t border-zinc-100 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-zinc-900">
+              {flowError && (
+                <p className="mb-2 text-xs text-red-500">{flowError}</p>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <Button variant="outline" className="h-12 rounded-xl" onClick={() => setFlowModalOpen(false)} disabled={isSavingFlow}>
+                  Hủy
+                </Button>
+                <Button className="h-12 rounded-xl" onClick={saveFlow} disabled={isSavingFlow}>
+                  {isSavingFlow ? 'Đang lưu...' : 'Lưu luồng'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -54,6 +54,27 @@ export type Database = {
         }
         Relationships: []
       }
+      message_flows: {
+        Row: {
+          id: string
+          name: string
+          items: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          items?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          items?: Json
+          created_at?: string
+        }
+        Relationships: []
+      }
       common_templates: {
         Row: {
           id: string
