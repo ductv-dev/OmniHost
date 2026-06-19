@@ -50,6 +50,7 @@ export default function CreateBookingDrawer({
   const [numAdults, setNumAdults] = useState(1)
   const [numChildren, setNumChildren] = useState(0)
   const [depositPaid, setDepositPaid] = useState(0)
+  const [totalPrice, setTotalPrice] = useState<number | ''>('')
   const [note, setNote] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -69,6 +70,7 @@ export default function CreateBookingDrawer({
       setNumAdults(1)
       setNumChildren(0)
       setDepositPaid(0)
+      setTotalPrice('')
       setNote('')
       setError(null)
     }
@@ -78,7 +80,14 @@ export default function CreateBookingDrawer({
   const nights = checkIn && checkOut && checkOut > checkIn
     ? differenceInDays(parseISO(checkOut), parseISO(checkIn))
     : 0
-  const totalPrice = nights * (selectedRoom?.default_price ?? 0)
+
+  useEffect(() => {
+    if (nights > 0 && selectedRoom) {
+      setTotalPrice(nights * (selectedRoom.default_price ?? 0))
+    } else {
+      setTotalPrice('')
+    }
+  }, [nights, selectedRoom?.id, selectedRoom?.default_price])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -101,7 +110,7 @@ export default function CreateBookingDrawer({
       check_out: checkOut,
       num_adults: numAdults,
       num_children: numChildren,
-      total_price: totalPrice,
+      total_price: typeof totalPrice === 'number' ? totalPrice : 0,
       deposit_paid: depositPaid,
       note: note.trim() || undefined,
     })
@@ -269,16 +278,22 @@ export default function CreateBookingDrawer({
                 </div>
               </Section>
 
-              {/* Pricing */}
               <Section title="Thanh toán">
                 <div className="rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-800">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-3">
                     <span className="text-sm text-zinc-500">
-                      {nights > 0 ? `${nights} đêm × ${(selectedRoom?.default_price ?? 0).toLocaleString('vi-VN')}đ` : 'Chọn ngày để tính giá'}
+                      {nights > 0 ? `${nights} đêm × ${(selectedRoom?.default_price ?? 0).toLocaleString('vi-VN')}đ` : 'Tổng tiền'}
                     </span>
-                    <span className="text-base font-bold text-zinc-950 dark:text-white">
-                      {totalPrice.toLocaleString('vi-VN')}đ
-                    </span>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={totalPrice}
+                        onChange={e => setTotalPrice(e.target.value === '' ? '' : Number(e.target.value))}
+                        className="w-32 rounded-lg border-0 bg-white px-3 py-1.5 pr-6 text-right font-bold shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-zinc-900"
+                        min={0}
+                      />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-zinc-400">đ</span>
+                    </div>
                   </div>
                 </div>
                 <Field label="Đặt cọc (đ)">

@@ -24,6 +24,7 @@ export default function RoomsTab({
 
   const [roomNumber, setRoomNumber] = useState('')
   const [floor, setFloor] = useState('')
+  const [defaultPrice, setDefaultPrice] = useState('')
   const [lockboxPassword, setLockboxPassword] = useState('')
   const [wifiName, setWifiName] = useState('')
   const [wifiPassword, setWifiPassword] = useState('')
@@ -49,6 +50,7 @@ export default function RoomsTab({
       setEditingRoom(room)
       setRoomNumber(room.room_number)
       setFloor(room.floor.toString())
+      setDefaultPrice(room.default_price?.toString() || '')
       setLockboxPassword(room.lockbox_password || '')
       setWifiName(room.wifi_name || '')
       setWifiPassword(room.wifi_password || '')
@@ -59,6 +61,7 @@ export default function RoomsTab({
       setEditingRoom(null)
       setRoomNumber('')
       setFloor('')
+      setDefaultPrice('')
       setLockboxPassword('')
       setWifiName('')
       setWifiPassword('')
@@ -84,6 +87,7 @@ export default function RoomsTab({
     formData.append('building_id', buildingId)
     formData.append('room_number', roomNumber)
     formData.append('floor', floorToUse)
+    formData.append('default_price', defaultPrice)
     formData.append('lockbox_password', lockboxPassword)
     formData.append('wifi_name', wifiName)
     formData.append('wifi_password', wifiPassword)
@@ -112,6 +116,7 @@ export default function RoomsTab({
     const roomsData = rawRooms.map(r => ({
       room_number: r,
       floor: inferFloor(r),
+      default_price: defaultPrice ? Number(defaultPrice) : 0,
     }))
 
     const result = await createBulkRooms(buildingId, roomsData)
@@ -231,9 +236,19 @@ export default function RoomsTab({
                         type="number"
                         value={floor}
                         onChange={e => setFloor(e.target.value)}
-                        placeholder="Để trống sẽ tự tính"
+                        placeholder="VD: 1"
                       />
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Giá phòng mặc định (đ/đêm)</Label>
+                    <Input
+                      type="number"
+                      value={defaultPrice}
+                      onChange={e => setDefaultPrice(e.target.value)}
+                      placeholder="VD: 500000"
+                    />
                   </div>
 
                   <div className="space-y-2">
@@ -310,6 +325,15 @@ export default function RoomsTab({
                     <p className="text-[11px] text-zinc-500">
                       Tầng sẽ được tự động suy ra từ số phòng (VD: 101 → Tầng 1, 1405 → Tầng 14). Mật khẩu hộp khóa và Wi-Fi có thể cập nhật sau.
                     </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Giá phòng mặc định chung (đ/đêm)</Label>
+                    <Input
+                      type="number"
+                      value={defaultPrice}
+                      onChange={e => setDefaultPrice(e.target.value)}
+                      placeholder="Tùy chọn: Nhập giá chung cho tất cả"
+                    />
                   </div>
                   {error && <p className="text-sm text-red-500">{error}</p>}
                 </div>

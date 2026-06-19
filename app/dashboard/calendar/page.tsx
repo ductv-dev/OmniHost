@@ -12,6 +12,7 @@ import TimelineCalendar, {
 } from "@/components/calendar/TimelineCalendar"
 import { Calendar } from "@/components/ui/calendar"
 import { createClient } from "@/lib/supabase/client"
+import { useQuery } from "@tanstack/react-query"
 import { addDays, format, startOfToday, subDays } from "date-fns"
 import { vi } from "date-fns/locale"
 import {
@@ -20,7 +21,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react"
-import { useCallback, useEffect, useState } from "react"
+import { useState } from "react"
 import { Drawer } from "vaul"
 
 export default function CalendarPage() {
@@ -32,10 +33,6 @@ export default function CalendarPage() {
 
   const [selectedDate, setSelectedDate] = useState(() => startOfToday())
   const [datePickerOpen, setDatePickerOpen] = useState(false)
-  const [rooms, setRooms] = useState<CalRoom[]>([])
-  const [bookings, setBookings] = useState<CalBooking[]>([])
-  const [blocks, setBlocks] = useState<CalBlock[]>([])
-  const [dataLoading, setDataLoading] = useState(false)
 
   // Drawer state
   const [choiceOpen, setChoiceOpen] = useState(false)
@@ -56,58 +53,66 @@ export default function CalendarPage() {
   const viewStart = subDays(selectedDate, 1)
   const viewEnd = addDays(selectedDate, 12)
 
-  const fetchData = useCallback(async () => {
-    if (!selectedId) return
-    setDataLoading(true)
-    const supabase = createClient()
+  const mStart = format(viewStart, "yyyy-MM-dd")
+  const mEnd = format(viewEnd, "yyyy-MM-dd")
 
-    // Tính trong callback để tránh Date object mới mỗi render gây infinite loop
-    const mStart = format(viewStart, "yyyy-MM-dd")
-    const mEnd = format(viewEnd, "yyyy-MM-dd")
+  const {
+    data,
+    isLoading: dataLoading,
+    refetch: fetchData,
+  } = useQuery({
+    queryKey: ["calendarData", selectedId, mStart, mEnd],
+    queryFn: async () => {
+      const supabase = createClient()
+      const roomIds =
+        (
+          await supabase
+            .from("rooms")
+            .select("id")
+            .eq("building_id", selectedId!)
+        ).data?.map((r) => r.id) ?? []
 
-    const roomIds =
-      (
-        await supabase.from("rooms").select("id").eq("building_id", selectedId)
-      ).data?.map((r) => r.id) ?? []
+      const [roomsResult, bookingsResult, blocksResult] = await Promise.all([
+        supabase
+          .from("rooms")
+          .select("id, room_number, floor, default_price")
+          .eq("building_id", selectedId!)
+          .eq("is_active", true)
+          .order("sort_order")
+          .order("room_number"),
 
-    const [roomsResult, bookingsResult, blocksResult] = await Promise.all([
-      supabase
-        .from("rooms")
-        .select("id, room_number, floor, default_price")
-        .eq("building_id", selectedId)
-        .eq("is_active", true)
-        .order("sort_order")
-        .order("room_number"),
+        supabase
+          .from("bookings")
+          .select(
+            "id, room_id, check_in, check_out, status, source, total_price, deposit_paid, num_adults, num_children, note, guest:guests(full_name, phone)"
+          )
+          .eq("building_id", selectedId!)
+          .neq("status", "cancelled")
+          .lte("check_in", mEnd)
+          .gte("check_out", mStart),
 
-      supabase
-        .from("bookings")
-        .select(
-          "id, room_id, check_in, check_out, status, source, total_price, deposit_paid, num_adults, num_children, note, guest:guests(full_name, phone)"
-        )
-        .eq("building_id", selectedId)
-        .neq("status", "cancelled")
-        .lte("check_in", mEnd)
-        .gte("check_out", mStart),
+        roomIds.length > 0
+          ? supabase
+              .from("room_blocks")
+              .select("id, room_id, start_date, end_date, reason")
+              .in("room_id", roomIds)
+              .lte("start_date", mEnd)
+              .gte("end_date", mStart)
+          : Promise.resolve({ data: [] }),
+      ])
 
-      roomIds.length > 0
-        ? supabase
-            .from("room_blocks")
-            .select("id, room_id, start_date, end_date, reason")
-            .in("room_id", roomIds)
-            .lte("start_date", mEnd)
-            .gte("end_date", mStart)
-        : Promise.resolve({ data: [] }),
-    ])
+      return {
+        rooms: (roomsResult.data ?? []) as CalRoom[],
+        bookings: (bookingsResult.data ?? []) as unknown as CalBooking[],
+        blocks: (blocksResult.data ?? []) as CalBlock[],
+      }
+    },
+    enabled: !!selectedId,
+  })
 
-    setRooms((roomsResult.data ?? []) as CalRoom[])
-    setBookings((bookingsResult.data ?? []) as unknown as CalBooking[])
-    setBlocks((blocksResult.data ?? []) as CalBlock[])
-    setDataLoading(false)
-  }, [selectedId, selectedDate])
-
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
+  const rooms = data?.rooms ?? []
+  const bookings = data?.bookings ?? []
+  const blocks = data?.blocks ?? []
 
   // ── Click handlers ──
 
@@ -181,8 +186,14 @@ export default function CalendarPage() {
     <>
       <div className="space-y-3">
         {/* Month navigator */}
-        <div className="flex items-center justify-between">
-          <div className="flex flex-wrap justify-end gap-1.5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs text-zinc-500">{selectedBuilding?.name}</p>
+            <h1 className="text-xl font-bold tracking-tight capitalize">
+              {format(selectedDate, "MMMM yyyy", { locale: vi })}
+            </h1>
+          </div>
+          <div className="flex flex-wrap justify-start gap-1.5 sm:justify-end">
             <button
               onClick={() => setSelectedDate(startOfToday())}
               className="flex h-10 items-center justify-center rounded-xl bg-zinc-100 px-3 text-xs font-semibold text-zinc-600 transition-colors active:scale-95 dark:bg-zinc-800 dark:text-zinc-300"
@@ -264,7 +275,7 @@ export default function CalendarPage() {
         bookings={bookings}
         defaultRoomId={selectedCell?.roomId ?? rooms[0]?.id ?? ""}
         defaultCheckIn={selectedCell?.date ?? format(new Date(), "yyyy-MM-dd")}
-        onSuccess={fetchData}
+        onSuccess={() => fetchData()}
       />
 
       <BookingDetailDrawer
@@ -272,7 +283,7 @@ export default function CalendarPage() {
         onOpenChange={setDetailOpen}
         booking={selectedBooking}
         room={selectedBookingRoom}
-        onSuccess={fetchData}
+        onSuccess={() => fetchData()}
       />
 
       <BlockRoomDrawer

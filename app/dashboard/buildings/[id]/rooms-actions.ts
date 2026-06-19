@@ -19,6 +19,7 @@ const roomSchema = z.object({
   washing_machine_floor: optionalFloorSchema,
   dryer_floor: optionalFloorSchema,
   room_note: z.string().optional().or(z.literal('')),
+  default_price: z.coerce.number().min(0).optional(),
 })
 
 export async function createRoom(formData: FormData) {
@@ -34,6 +35,7 @@ export async function createRoom(formData: FormData) {
     washing_machine_floor: formData.get('washing_machine_floor') as string,
     dryer_floor: formData.get('dryer_floor') as string,
     room_note: formData.get('room_note') as string,
+    default_price: formData.get('default_price'),
   }
 
   const result = roomSchema.safeParse(data)
@@ -51,6 +53,7 @@ export async function createRoom(formData: FormData) {
       washing_machine_floor: result.data.washing_machine_floor ?? null,
       dryer_floor: result.data.dryer_floor ?? null,
       room_note: result.data.room_note || null,
+      default_price: result.data.default_price ?? 0,
     },
   ])
 
@@ -73,6 +76,7 @@ export async function updateRoom(id: string, formData: FormData) {
     washing_machine_floor: formData.get('washing_machine_floor') as string,
     dryer_floor: formData.get('dryer_floor') as string,
     room_note: formData.get('room_note') as string,
+    default_price: formData.get('default_price'),
   }
 
   const result = roomSchema.safeParse(data)
@@ -91,6 +95,7 @@ export async function updateRoom(id: string, formData: FormData) {
       washing_machine_floor: result.data.washing_machine_floor ?? null,
       dryer_floor: result.data.dryer_floor ?? null,
       room_note: result.data.room_note || null,
+      default_price: result.data.default_price ?? 0,
     })
     .eq('id', id)
 
@@ -110,7 +115,7 @@ export async function deleteRoom(id: string) {
   return { success: true }
 }
 
-export async function createBulkRooms(buildingId: string, roomsData: { room_number: string; floor: number }[]) {
+export async function createBulkRooms(buildingId: string, roomsData: { room_number: string; floor: number; default_price?: number }[]) {
   if (!roomsData || roomsData.length === 0) return { error: 'No rooms provided' }
   const supabase = await createClient()
 
@@ -118,6 +123,7 @@ export async function createBulkRooms(buildingId: string, roomsData: { room_numb
     building_id: buildingId,
     room_number: r.room_number,
     floor: r.floor,
+    default_price: r.default_price ?? 0,
   }))
 
   const { error } = await supabase.from('rooms').insert(insertPayload)

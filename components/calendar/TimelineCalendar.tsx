@@ -8,6 +8,7 @@ import {
   isWeekend,
   parseISO,
 } from "date-fns"
+import { vi } from "date-fns/locale"
 import { motion } from "framer-motion"
 import React from "react"
 
@@ -150,7 +151,7 @@ export default function TimelineCalendar({
             className="flex items-center justify-center border-r border-b border-white/20 bg-white/90 backdrop-blur-2xl dark:bg-zinc-900/90"
           >
             <span className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase">
-              {format(viewStart, "MMM yy")}
+              {format(viewStart, "MMM yy", { locale: vi })}
             </span>
           </div>
 
