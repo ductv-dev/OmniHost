@@ -112,6 +112,10 @@ export type Database = {
           dryer_floor: number | null
           room_note: string | null
           services: Json
+          default_price: number
+          housekeeping: string
+          sort_order: number
+          is_active: boolean
           created_at: string
         }
         Insert: {
@@ -126,6 +130,10 @@ export type Database = {
           dryer_floor?: number | null
           room_note?: string | null
           services?: Json
+          default_price?: number
+          housekeeping?: string
+          sort_order?: number
+          is_active?: boolean
           created_at?: string
         }
         Update: {
@@ -140,6 +148,10 @@ export type Database = {
           dryer_floor?: number | null
           room_note?: string | null
           services?: Json
+          default_price?: number
+          housekeeping?: string
+          sort_order?: number
+          is_active?: boolean
           created_at?: string
         }
         Relationships: [
@@ -151,6 +163,264 @@ export type Database = {
             referencedColumns: ["id"]
           }
         ]
+      }
+      profiles: {
+        Row: {
+          id: string
+          full_name: string
+          phone: string | null
+          is_super_admin: boolean
+          created_at: string
+        }
+        Insert: {
+          id: string
+          full_name: string
+          phone?: string | null
+          is_super_admin?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          full_name?: string
+          phone?: string | null
+          is_super_admin?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
+      staff_assignments: {
+        Row: {
+          id: string
+          user_id: string
+          building_id: string
+          role: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          building_id: string
+          role: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          building_id?: string
+          role?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      guests: {
+        Row: {
+          id: string
+          full_name: string
+          phone: string | null
+          email: string | null
+          gender: string | null
+          country: string | null
+          note: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          full_name: string
+          phone?: string | null
+          email?: string | null
+          gender?: string | null
+          country?: string | null
+          note?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          full_name?: string
+          phone?: string | null
+          email?: string | null
+          gender?: string | null
+          country?: string | null
+          note?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      bookings: {
+        Row: {
+          id: string
+          building_id: string
+          room_id: string
+          guest_id: string | null
+          source: string
+          status: string
+          guest_type: string
+          check_in: string
+          check_out: string
+          check_in_time: string
+          check_out_time: string
+          num_adults: number
+          num_children: number
+          total_price: number
+          deposit_paid: number
+          note: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          building_id: string
+          room_id: string
+          guest_id?: string | null
+          source?: string
+          status?: string
+          guest_type?: string
+          check_in: string
+          check_out: string
+          check_in_time?: string
+          check_out_time?: string
+          num_adults?: number
+          num_children?: number
+          total_price?: number
+          deposit_paid?: number
+          note?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          building_id?: string
+          room_id?: string
+          guest_id?: string | null
+          source?: string
+          status?: string
+          guest_type?: string
+          check_in?: string
+          check_out?: string
+          check_in_time?: string
+          check_out_time?: string
+          num_adults?: number
+          num_children?: number
+          total_price?: number
+          deposit_paid?: number
+          note?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      room_rates: {
+        Row: {
+          id: string
+          room_id: string
+          date: string
+          price: number
+        }
+        Insert: {
+          id?: string
+          room_id: string
+          date: string
+          price: number
+        }
+        Update: {
+          id?: string
+          room_id?: string
+          date?: string
+          price?: number
+        }
+        Relationships: []
+      }
+      room_blocks: {
+        Row: {
+          id: string
+          room_id: string
+          start_date: string
+          end_date: string
+          reason: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          room_id: string
+          start_date: string
+          end_date: string
+          reason?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          room_id?: string
+          start_date?: string
+          end_date?: string
+          reason?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          id: string
+          booking_id: string
+          amount: number
+          method: string
+          paid_at: string
+          note: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          booking_id: string
+          amount: number
+          method?: string
+          paid_at?: string
+          note?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          booking_id?: string
+          amount?: number
+          method?: string
+          paid_at?: string
+          note?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      booking_history: {
+        Row: {
+          id: string
+          booking_id: string
+          action: string
+          changes: Json | null
+          changed_by: string | null
+          changed_at: string
+        }
+        Insert: {
+          id?: string
+          booking_id: string
+          action: string
+          changes?: Json | null
+          changed_by?: string | null
+          changed_at?: string
+        }
+        Update: {
+          id?: string
+          booking_id?: string
+          action?: string
+          changes?: Json | null
+          changed_by?: string | null
+          changed_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {

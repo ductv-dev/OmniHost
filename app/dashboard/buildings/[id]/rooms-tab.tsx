@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { createRoom, updateRoom, deleteRoom } from './rooms-actions'
+import { createRoom, updateRoom, deleteRoom, createBulkRooms } from './rooms-actions'
 import { Tables } from '@/types/supabase'
 
 export default function RoomsTab({
@@ -30,6 +30,19 @@ export default function RoomsTab({
   const [washingMachineFloor, setWashingMachineFloor] = useState('')
   const [dryerFloor, setDryerFloor] = useState('')
   const [roomNote, setRoomNote] = useState('')
+  
+  const [activeTab, setActiveTab] = useState<'single' | 'bulk'>('single')
+  const [bulkRoomsText, setBulkRoomsText] = useState('')
+
+  const inferFloor = (roomStr: string): number => {
+    const numMatch = roomStr.match(/\d+/)
+    if (!numMatch) return 1
+    const num = numMatch[0]
+    if (num.length >= 3) {
+      return parseInt(num.slice(0, -2), 10) || 1
+    }
+    return 1
+  }
 
   const handleOpenModal = (room?: Tables<'rooms'>) => {
     if (room) {
@@ -54,18 +67,23 @@ export default function RoomsTab({
       setRoomNote('')
     }
     setError(null)
+    setActiveTab('single')
+    setBulkRoomsText('')
     setIsModalOpen(true)
   }
 
   const handleSave = async () => {
-    if (!roomNumber || !floor) return setError('Room number and floor are required')
+    if (activeTab === 'bulk') return handleBulkSave()
+
+    const floorToUse = floor.trim() || inferFloor(roomNumber).toString()
+    if (!roomNumber || !floorToUse) return setError('Vui lòng nhập số phòng')
     setIsLoading(true)
     setError(null)
 
     const formData = new FormData()
     formData.append('building_id', buildingId)
     formData.append('room_number', roomNumber)
-    formData.append('floor', floor)
+    formData.append('floor', floorToUse)
     formData.append('lockbox_password', lockboxPassword)
     formData.append('wifi_name', wifiName)
     formData.append('wifi_password', wifiPassword)
@@ -77,6 +95,26 @@ export default function RoomsTab({
       ? await updateRoom(editingRoom.id, formData)
       : await createRoom(formData)
 
+    if (result?.error) {
+      setError(result.error)
+    } else {
+      window.location.reload()
+    }
+    setIsLoading(false)
+  }
+
+  const handleBulkSave = async () => {
+    if (!bulkRoomsText.trim()) return setError('Vui lòng nhập danh sách phòng')
+    setIsLoading(true)
+    setError(null)
+
+    const rawRooms = bulkRoomsText.split(/[\n,;]+/).map(r => r.trim()).filter(Boolean)
+    const roomsData = rawRooms.map(r => ({
+      room_number: r,
+      floor: inferFloor(r),
+    }))
+
+    const result = await createBulkRooms(buildingId, roomsData)
     if (result?.error) {
       setError(result.error)
     } else {
@@ -159,88 +197,123 @@ export default function RoomsTab({
 
             {/* scrollable body */}
             <div className="flex-1 overflow-y-auto border-t border-zinc-100 px-4 py-4 dark:border-zinc-900">
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label>Số phòng</Label>
-                    <Input
-                      value={roomNumber}
-                      onChange={e => setRoomNumber(e.target.value)}
-                      placeholder="VD: 101"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Tầng</Label>
-                    <Input
-                      type="number"
-                      value={floor}
-                      onChange={e => setFloor(e.target.value)}
-                      placeholder="1"
-                    />
-                  </div>
+              {!editingRoom && (
+                <div className="mb-4 flex rounded-lg bg-zinc-100 p-1 dark:bg-zinc-900">
+                  <button
+                    onClick={() => setActiveTab('single')}
+                    className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-colors ${activeTab === 'single' ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100' : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300'}`}
+                  >
+                    Tạo từng phòng
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('bulk')}
+                    className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-colors ${activeTab === 'bulk' ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100' : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300'}`}
+                  >
+                    Tạo nhiều phòng
+                  </button>
                 </div>
+              )}
 
-                <div className="space-y-2">
-                  <Label>Mã hộp khóa</Label>
-                  <Input
-                    value={lockboxPassword}
-                    onChange={e => setLockboxPassword(e.target.value)}
-                    placeholder="VD: 1234"
-                  />
-                </div>
+              {activeTab === 'single' ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label>Số phòng</Label>
+                      <Input
+                        value={roomNumber}
+                        onChange={e => setRoomNumber(e.target.value)}
+                        placeholder="VD: 101"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Tầng</Label>
+                      <Input
+                        type="number"
+                        value={floor}
+                        onChange={e => setFloor(e.target.value)}
+                        placeholder="Để trống sẽ tự tính"
+                      />
+                    </div>
+                  </div>
 
-                <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label>Tên Wi-Fi</Label>
+                    <Label>Mã hộp khóa</Label>
                     <Input
-                      value={wifiName}
-                      onChange={e => setWifiName(e.target.value)}
-                      placeholder="Wi-Fi phòng 101"
+                      value={lockboxPassword}
+                      onChange={e => setLockboxPassword(e.target.value)}
+                      placeholder="VD: 1234"
                     />
                   </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label>Tên Wi-Fi</Label>
+                      <Input
+                        value={wifiName}
+                        onChange={e => setWifiName(e.target.value)}
+                        placeholder="Wi-Fi phòng 101"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Mật khẩu Wi-Fi</Label>
+                      <Input
+                        value={wifiPassword}
+                        onChange={e => setWifiPassword(e.target.value)}
+                        placeholder="88888888"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label>Tầng máy giặt</Label>
+                      <Input
+                        type="number"
+                        value={washingMachineFloor}
+                        onChange={e => setWashingMachineFloor(e.target.value)}
+                        placeholder="5"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Tầng máy sấy</Label>
+                      <Input
+                        type="number"
+                        value={dryerFloor}
+                        onChange={e => setDryerFloor(e.target.value)}
+                        placeholder="5"
+                      />
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
-                    <Label>Mật khẩu Wi-Fi</Label>
-                    <Input
-                      value={wifiPassword}
-                      onChange={e => setWifiPassword(e.target.value)}
-                      placeholder="88888888"
+                    <Label>Ghi chú phòng</Label>
+                    <textarea
+                      value={roomNote}
+                      onChange={e => setRoomNote(e.target.value)}
+                      placeholder="VD: p101 và p501 dùng máy giặt tầng 5."
+                      className="flex min-h-24 w-full rounded-lg border-0 bg-black/5 px-4 py-3 text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
                     />
                   </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                  {error && <p className="text-sm text-red-500">{error}</p>}
+                </div>
+              ) : (
+                <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Tầng máy giặt</Label>
-                    <Input
-                      type="number"
-                      value={washingMachineFloor}
-                      onChange={e => setWashingMachineFloor(e.target.value)}
-                      placeholder="5"
+                    <Label>Danh sách phòng</Label>
+                    <textarea
+                      value={bulkRoomsText}
+                      onChange={e => setBulkRoomsText(e.target.value)}
+                      placeholder="Nhập các phòng cách nhau bằng dấu phẩy hoặc xuống dòng.&#10;VD:&#10;101, 102&#10;201, 202"
+                      className="flex min-h-32 w-full rounded-lg border-0 bg-black/5 px-4 py-3 text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
                     />
+                    <p className="text-[11px] text-zinc-500">
+                      Tầng sẽ được tự động suy ra từ số phòng (VD: 101 → Tầng 1, 1405 → Tầng 14). Mật khẩu hộp khóa và Wi-Fi có thể cập nhật sau.
+                    </p>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Tầng máy sấy</Label>
-                    <Input
-                      type="number"
-                      value={dryerFloor}
-                      onChange={e => setDryerFloor(e.target.value)}
-                      placeholder="5"
-                    />
-                  </div>
+                  {error && <p className="text-sm text-red-500">{error}</p>}
                 </div>
-
-                <div className="space-y-2">
-                  <Label>Ghi chú phòng</Label>
-                  <textarea
-                    value={roomNote}
-                    onChange={e => setRoomNote(e.target.value)}
-                    placeholder="VD: p101 và p501 dùng máy giặt tầng 5."
-                    className="flex min-h-24 w-full rounded-lg border-0 bg-black/5 px-4 py-3 text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
-                  />
-                </div>
-
-                {error && <p className="text-sm text-red-500">{error}</p>}
-              </div>
+              )}
             </div>
 
             {/* sticky footer */}

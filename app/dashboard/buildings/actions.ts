@@ -74,6 +74,40 @@ export async function createBuilding(formData: FormData) {
   redirect('/dashboard/buildings')
 }
 
+export async function createBuildingInline(input: {
+  name: string
+  sign_name?: string
+  address: string
+  map_link?: string
+  gate_password?: string
+  lobby_wifi_name?: string
+  lobby_wifi_password?: string
+  drinking_water_note?: string
+  motorbike_parking_note?: string
+}): Promise<{ success: true } | { error: string }> {
+  if (!input.name?.trim()) return { error: 'Nhập tên tòa nhà' }
+  if (!input.address?.trim()) return { error: 'Nhập địa chỉ' }
+
+  const supabase = await createClient()
+  const { error } = await supabase.from('buildings').insert([{
+    name: input.name.trim(),
+    sign_name: input.sign_name?.trim() || null,
+    address: input.address.trim(),
+    map_link: input.map_link?.trim() || null,
+    gate_password: input.gate_password?.trim() || null,
+    lobby_wifi_name: input.lobby_wifi_name?.trim() || null,
+    lobby_wifi_password: input.lobby_wifi_password?.trim() || null,
+    drinking_water_note: input.drinking_water_note?.trim() || null,
+    motorbike_parking_note: input.motorbike_parking_note?.trim() || null,
+    custom_templates: defaultTemplates,
+  }])
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/dashboard/buildings')
+  return { success: true }
+}
+
 export async function updateBuilding(id: string, formData: FormData) {
   const supabase = await createClient()
 

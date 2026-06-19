@@ -109,3 +109,20 @@ export async function deleteRoom(id: string) {
   // revalidatePath is harder without knowing the building_id here, but we can just let the client handle it via reload
   return { success: true }
 }
+
+export async function createBulkRooms(buildingId: string, roomsData: { room_number: string; floor: number }[]) {
+  if (!roomsData || roomsData.length === 0) return { error: 'No rooms provided' }
+  const supabase = await createClient()
+
+  const insertPayload = roomsData.map(r => ({
+    building_id: buildingId,
+    room_number: r.room_number,
+    floor: r.floor,
+  }))
+
+  const { error } = await supabase.from('rooms').insert(insertPayload)
+  if (error) return { error: error.message }
+
+  revalidatePath(`/dashboard/buildings/${buildingId}`)
+  return { success: true }
+}

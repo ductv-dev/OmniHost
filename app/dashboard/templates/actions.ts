@@ -70,6 +70,32 @@ export async function updateCommonTemplate(id: string, formData: FormData) {
   return { success: true }
 }
 
+export async function createCommonTemplateInline(input: {
+  name: string
+  category: string
+  content: string
+}): Promise<{ id: string; name: string; category: string; content: string; created_at: string } | { error: string }> {
+  if (!input.name.trim()) return { error: 'Nhập tên template' }
+  if (!input.category.trim()) return { error: 'Nhập danh mục' }
+  if (!input.content.trim()) return { error: 'Nhập nội dung' }
+
+  const syntaxIssues = getTemplateSyntaxIssues(input.content.trim())
+  if (syntaxIssues.length > 0) return { error: syntaxIssues.join(' ') }
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('common_templates')
+    .insert({ name: input.name.trim(), category: input.category.trim(), content: input.content.trim() })
+    .select()
+    .single()
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/dashboard/templates')
+  revalidatePath('/dashboard/generator')
+  return data as { id: string; name: string; category: string; content: string; created_at: string }
+}
+
 export async function deleteCommonTemplate(id: string) {
   const supabase = await createClient()
   const { error } = await supabase

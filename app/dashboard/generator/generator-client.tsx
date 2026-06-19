@@ -21,6 +21,7 @@ import {
   updateMessageFlow,
   deleteMessageFlow,
 } from './actions'
+import { createCommonTemplateInline } from '@/app/dashboard/templates/actions'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -92,6 +93,17 @@ export default function GeneratorClient({
   // flows local state
   const [flows, setFlows] = useState(initialFlows)
 
+  // local templates state (so new templates appear without page reload)
+  const [localTemplates, setLocalTemplates] = useState(commonTemplates)
+
+  // create template drawer
+  const [createTplOpen, setCreateTplOpen] = useState(false)
+  const [tplName, setTplName] = useState('')
+  const [tplCategory, setTplCategory] = useState('')
+  const [tplContent, setTplContent] = useState('')
+  const [tplSaving, setTplSaving] = useState(false)
+  const [tplError, setTplError] = useState<string | null>(null)
+
   // flow editor modal
   const [flowModalOpen, setFlowModalOpen] = useState(false)
   const [editingFlow, setEditingFlow] = useState<Tables<'message_flows'> | null>(null)
@@ -114,11 +126,11 @@ export default function GeneratorClient({
     const building: MessageTemplate[] = selectedBuilding
       ? parseMessageTemplates(selectedBuilding.custom_templates)
       : []
-    const common: MessageTemplate[] = commonTemplates.map(t => ({
+    const common: MessageTemplate[] = localTemplates.map(t => ({
       id: t.id, name: t.name, category: t.category, type: 'custom' as const, content: t.content,
     }))
     return [...building, ...common]
-  }, [selectedBuilding, commonTemplates])
+  }, [selectedBuilding, localTemplates])
 
   const filteredBrowseTemplates = useMemo(() => {
     const q = searchQuery.toLowerCase().trim()
@@ -201,6 +213,21 @@ export default function GeneratorClient({
       return acc
     }, {} as Record<string, MessageTemplate[]>)
   , [filteredFlowTemplates])
+
+  // ── create template handler ───────────────────────────────────────────────
+
+  const saveNewTemplate = async () => {
+    setTplError(null)
+    setTplSaving(true)
+    const result = await createCommonTemplateInline({ name: tplName, category: tplCategory, content: tplContent })
+    setTplSaving(false)
+    if ('error' in result) { setTplError(result.error); return }
+    setLocalTemplates(prev => [...prev, result])
+    setCreateTplOpen(false)
+    setTplName(''); setTplCategory(''); setTplContent('')
+  }
+
+  const existingCategories = [...new Set(localTemplates.map(t => t.category))].sort()
 
   // ── sheet handlers ────────────────────────────────────────────────────────
 
@@ -410,15 +437,23 @@ export default function GeneratorClient({
       {/* ── Browse tab ── */}
       {activeTab === 'browse' && (
         <div className="space-y-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Tìm template..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="flex h-11 w-full rounded-lg border-0 bg-black/5 pl-9 pr-4 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
-            />
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Tìm template..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="flex h-11 w-full rounded-lg border-0 bg-black/5 pl-9 pr-4 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
+              />
+            </div>
+            <button
+              onClick={() => { setTplName(''); setTplCategory(''); setTplContent(''); setTplError(null); setCreateTplOpen(true) }}
+              className="flex h-11 items-center gap-1.5 rounded-lg bg-zinc-950 px-3 text-sm font-semibold text-white transition-colors hover:bg-zinc-700 dark:bg-white dark:text-zinc-950"
+            >
+              <Plus className="size-4" /> Tạo
+            </button>
           </div>
 
           {Object.keys(groupedBrowseTemplates).length === 0 ? (
@@ -701,6 +736,76 @@ export default function GeneratorClient({
               <Button className="h-12 rounded-xl" disabled={!sheetMessage} onClick={confirmSheetMessage}>
                 {pendingQueueItemId ? 'Xác nhận' : <><Plus className="mr-2 size-4" /> Thêm vào hàng</>}
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Create Template Drawer ── */}
+      {createTplOpen && (
+        <div
+          className="fixed inset-0 z-200 flex items-end justify-center bg-black/50 backdrop-blur-sm"
+          onClick={e => { if (e.target === e.currentTarget) setCreateTplOpen(false) }}
+        >
+          <div className="flex max-h-[92dvh] w-full max-w-130 flex-col rounded-t-2xl bg-white shadow-2xl dark:bg-zinc-950">
+            <div className="flex shrink-0 justify-center pt-3 pb-1">
+              <div className="h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-700" />
+            </div>
+            <div className="flex shrink-0 items-center justify-between px-4 pb-3 pt-1">
+              <h3 className="text-base font-semibold">Tạo template mới</h3>
+              <button onClick={() => setCreateTplOpen(false)} className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900">
+                <X className="size-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto border-t border-zinc-100 px-4 py-4 dark:border-zinc-900">
+              <div className="space-y-4">
+                {tplError && (
+                  <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950 dark:text-red-400">{tplError}</p>
+                )}
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold">Tên template</label>
+                  <input
+                    value={tplName}
+                    onChange={e => setTplName(e.target.value)}
+                    placeholder="VD: Hướng dẫn check-in, Mật khẩu wifi..."
+                    className="flex h-11 w-full rounded-lg border-0 bg-black/5 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold">Danh mục</label>
+                  <input
+                    value={tplCategory}
+                    onChange={e => setTplCategory(e.target.value)}
+                    placeholder="VD: Check-in, Wifi, Hướng dẫn..."
+                    list="tpl-categories"
+                    className="flex h-11 w-full rounded-lg border-0 bg-black/5 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
+                  />
+                  <datalist id="tpl-categories">
+                    {existingCategories.map(c => <option key={c} value={c} />)}
+                  </datalist>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold">Nội dung</label>
+                  <p className="text-xs text-zinc-400">Dùng <code className="rounded bg-zinc-100 px-1 dark:bg-zinc-800">{'{{tên_biến}}'}</code> cho biến động</p>
+                  <textarea
+                    value={tplContent}
+                    onChange={e => setTplContent(e.target.value)}
+                    placeholder={'Xin chào {{tên_khách}}, chào mừng bạn đến...\n\nMật khẩu wifi: {{wifi_password}}'}
+                    rows={7}
+                    className="w-full resize-none rounded-lg border-0 bg-black/5 px-3 py-2.5 text-sm leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="shrink-0 border-t border-zinc-100 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-zinc-900">
+              <div className="grid grid-cols-2 gap-3">
+                <Button variant="outline" className="h-12 rounded-xl" onClick={() => setCreateTplOpen(false)} disabled={tplSaving}>
+                  Hủy
+                </Button>
+                <Button className="h-12 rounded-xl" onClick={saveNewTemplate} disabled={tplSaving || !tplName.trim() || !tplContent.trim()}>
+                  {tplSaving ? 'Đang lưu...' : 'Lưu template'}
+                </Button>
+              </div>
             </div>
           </div>
         </div>

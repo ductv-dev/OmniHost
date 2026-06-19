@@ -1,0 +1,118 @@
+--- app/dashboard/calendar/page.tsx
++++ app/dashboard/calendar/page.tsx
+@@ -2,12 +2,15 @@
+ 
+ import { useState, useEffect, useCallback } from 'react'
+-import { startOfMonth, endOfMonth, addMonths, subMonths, format } from 'date-fns'
+-import { ChevronLeft, ChevronRight, Building2 } from 'lucide-react'
++import { startOfToday, addDays, subDays, format } from 'date-fns'
++import { vi } from 'date-fns/locale'
++import { ChevronLeft, ChevronRight, Building2, CalendarDays } from 'lucide-react'
++import { Drawer } from 'vaul'
+ import { createClient } from '@/lib/supabase/client'
+ import { useBuilding } from '@/components/building-context'
+ import TimelineCalendar, { type CalRoom, type CalBooking, type CalBlock } from '@/components/calendar/TimelineCalendar'
+ import ActionChoiceDrawer from '@/components/calendar/ActionChoiceDrawer'
+ import CreateBookingDrawer from '@/components/calendar/CreateBookingDrawer'
+ import BookingDetailDrawer from '@/components/calendar/BookingDetailDrawer'
+ import BlockRoomDrawer from '@/components/calendar/BlockRoomDrawer'
++import { Calendar } from '@/components/ui/calendar'
+ 
+@@ -16,3 +19,4 @@
+ 
+-  const [month, setMonth] = useState(() => startOfMonth(new Date()))
++  const [selectedDate, setSelectedDate] = useState(() => startOfToday())
++  const [datePickerOpen, setDatePickerOpen] = useState(false)
+   const [rooms, setRooms] = useState<CalRoom[]>([])
+@@ -32,4 +36,4 @@
+ 
+-  const monthStart = month
+-  const monthEnd = endOfMonth(month)
++  const viewStart = subDays(selectedDate, 1)
++  const viewEnd = addDays(selectedDate, 5)
+ 
+@@ -40,4 +44,3 @@
+-    // Tính trong callback để tránh Date object mới mỗi render gây infinite loop
+-    const mStart = format(startOfMonth(month), 'yyyy-MM-dd')
+-    const mEnd   = format(endOfMonth(month),   'yyyy-MM-dd')
++    const mStart = format(viewStart, 'yyyy-MM-dd')
++    const mEnd   = format(viewEnd, 'yyyy-MM-dd')
+ 
+@@ -79,3 +82,3 @@
+     setDataLoading(false)
+-  }, [selectedId, month])
++  }, [selectedId, selectedDate]) // mStart and mEnd depend on selectedDate
+ 
+@@ -150,3 +153,3 @@
+             <h1 className="text-xl font-bold tracking-tight">
+-              {format(month, 'MMMM yyyy')}
++              {format(selectedDate, 'MMMM yyyy', { locale: vi })}
+             </h1>
+@@ -156,12 +159,13 @@
+             <button
+-              onClick={() => setMonth(m => subMonths(m, 1))}
++              onClick={() => setSelectedDate(d => subDays(d, 7))}
+               className="flex size-10 items-center justify-center rounded-xl bg-zinc-100 text-zinc-600 transition-colors active:scale-95 dark:bg-zinc-800 dark:text-zinc-300"
+             >
+               <ChevronLeft className="size-5" />
+             </button>
+             <button
+-              onClick={() => setMonth(startOfMonth(new Date()))}
++              onClick={() => setDatePickerOpen(true)}
+               className="flex h-10 items-center justify-center rounded-xl bg-zinc-100 px-3 text-xs font-semibold text-zinc-600 transition-colors active:scale-95 dark:bg-zinc-800 dark:text-zinc-300"
+             >
+-              Hôm nay
++              <CalendarDays className="size-4 mr-2 text-zinc-400" />
++              {format(selectedDate, 'dd/MM')}
+             </button>
+@@ -168,3 +172,3 @@
+             <button
+-              onClick={() => setMonth(m => addMonths(m, 1))}
++              onClick={() => setSelectedDate(d => addDays(d, 7))}
+               className="flex size-10 items-center justify-center rounded-xl bg-zinc-100 text-zinc-600 transition-colors active:scale-95 dark:bg-zinc-800 dark:text-zinc-300"
+@@ -193,4 +197,4 @@
+             blocks={blocks}
+-            monthStart={monthStart}
+-            monthEnd={monthEnd}
++            viewStart={viewStart}
++            viewEnd={viewEnd}
+             onBookingClick={handleBookingClick}
+@@ -218,2 +222,3 @@
+         rooms={rooms}
++        bookings={bookings} // We need to pass bookings to disable dates
+         defaultRoomId={selectedCell?.roomId ?? (rooms[0]?.id ?? '')}
+@@ -238,2 +243,30 @@
+       />
++
++      <Drawer.Root open={datePickerOpen} onOpenChange={setDatePickerOpen}>
++        <Drawer.Portal>
++          <Drawer.Overlay className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm" />
++          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-[60] flex max-h-[92dvh] flex-col rounded-t-[2rem] border-t border-white/20 bg-white shadow-2xl dark:bg-zinc-950">
++            <div className="shrink-0 px-5 pt-4 pb-3">
++              <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-zinc-200 dark:bg-zinc-700" />
++              <Drawer.Title className="text-base font-bold text-center">Chọn ngày</Drawer.Title>
++            </div>
++            <div className="flex-1 overflow-y-auto flex items-start justify-center px-2 pb-6">
++              <Calendar
++                mode="single"
++                selected={selectedDate}
++                onSelect={(d) => {
++                  if (d) {
++                    setSelectedDate(d)
++                    setDatePickerOpen(false)
++                  }
++                }}
++                locale={vi}
++                classNames={{
++                  root: 'w-full',
++                  month_grid: 'w-full',
++                  weekday: 'flex-1 text-center text-xs text-zinc-400 py-1',
++                  week: 'flex w-full',
++                  day: 'flex-1 text-center',
++                }}
++              />
++            </div>
++          </Drawer.Content>
++        </Drawer.Portal>
++      </Drawer.Root>
+     </>
