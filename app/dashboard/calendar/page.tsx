@@ -88,7 +88,7 @@ export default function CalendarPage() {
           supabase
             .from("bookings")
             .select(
-              "id, room_id, check_in, check_out, status, source, total_price, deposit_paid, num_adults, num_children, note, guest:guests(full_name, phone)"
+              "id, room_id, check_in, check_out, status, source, guest_type, total_price, deposit_paid, num_adults, num_children, note, guest:guests(id, full_name, phone, email, country)"
             )
             .eq("building_id", selectedId!)
             .neq("status", "cancelled")
@@ -305,6 +305,8 @@ export default function CalendarPage() {
         onOpenChange={setDetailOpen}
         booking={selectedBooking}
         room={selectedBookingRoom}
+        rooms={rooms}
+        allBookings={bookings}
         onSuccess={() => fetchData()}
       />
 
@@ -335,8 +337,8 @@ export default function CalendarPage() {
 
       <Drawer.Root open={datePickerOpen} onOpenChange={setDatePickerOpen}>
         <Drawer.Portal>
-          <Drawer.Overlay className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm" />
-          <Drawer.Content className="fixed right-0 bottom-0 left-0 z-[60] flex max-h-[92dvh] flex-col rounded-t-[2rem] border-t border-white/20 bg-white shadow-2xl dark:bg-zinc-950">
+          <Drawer.Overlay className="fixed inset-0 z-60 bg-black/40 backdrop-blur-sm" />
+          <Drawer.Content className="fixed right-0 bottom-0 left-0 z-60 flex max-h-[92dvh] flex-col rounded-t-[2rem] border-t border-white/20 bg-white shadow-2xl dark:bg-zinc-950">
             <div className="shrink-0 px-5 pt-4 pb-3">
               <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-zinc-200 dark:bg-zinc-700" />
               <Drawer.Title className="text-center text-base font-bold">

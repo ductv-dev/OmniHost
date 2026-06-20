@@ -148,7 +148,7 @@ export default function CreateBookingDrawer({
           </div>
 
           <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-            <div className="flex-1 overflow-y-auto px-5 py-4">
+            <div className="flex-1 overflow-y-auto px-5 pt-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
             <div className="space-y-4">
               {error && (
                 <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600 dark:bg-red-950 dark:text-red-400">
@@ -318,17 +318,16 @@ export default function CreateBookingDrawer({
                 />
               </Section>
 
+              <div className="border-t border-zinc-100 pt-4 dark:border-zinc-800">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="h-14 w-full rounded-2xl bg-zinc-950 text-base font-bold text-white transition-transform active:scale-95 disabled:opacity-60 dark:bg-white dark:text-zinc-950"
+                >
+                  {loading ? 'Đang lưu…' : 'Xác nhận đặt phòng'}
+                </button>
+              </div>
             </div>
-            </div>
-
-            <div className="shrink-0 border-t border-zinc-100 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 dark:border-zinc-800">
-              <button
-                type="submit"
-                disabled={loading}
-                className="h-14 w-full rounded-2xl bg-zinc-950 text-base font-bold text-white transition-transform active:scale-95 disabled:opacity-60 dark:bg-white dark:text-zinc-950"
-              >
-                {loading ? 'Đang lưu…' : 'Xác nhận đặt phòng'}
-              </button>
             </div>
           </form>
         </Drawer.Content>

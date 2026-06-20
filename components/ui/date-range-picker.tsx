@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Drawer } from 'vaul'
 import { Calendar } from '@/components/ui/calendar'
-import { differenceInDays, parseISO, format, startOfToday } from 'date-fns'
+import { differenceInDays, parseISO, format } from 'date-fns'
 import { vi } from 'date-fns/locale'
 import type { DateRange } from 'react-day-picker'
 import { CalendarDays } from 'lucide-react'
@@ -117,8 +117,6 @@ export function DateRangePicker({
                 selected={range}
                 onSelect={handleSelect}
                 disabled={(date: Date) => {
-                  if (date < startOfToday()) return true
-                  
                   const dStr = format(date, 'yyyy-MM-dd')
                   
                   if (range?.from && !range?.to) {

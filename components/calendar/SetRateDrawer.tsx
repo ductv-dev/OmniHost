@@ -134,7 +134,7 @@ export default function SetRateDrawer({
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-5 py-4">
+          <div className="flex-1 overflow-y-auto px-5 pt-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
             <div className="space-y-4">
               {error && (
                 <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600 dark:bg-red-950 dark:text-red-400">
@@ -196,49 +196,48 @@ export default function SetRateDrawer({
                   </span>
                 </label>
               )}
-            </div>
-          </div>
-
-          <div className="shrink-0 space-y-2 border-t border-zinc-100 px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] dark:border-zinc-800">
-            {!confirmDelete ? (
-              <>
-                <button
-                  onClick={handleSave}
-                  disabled={loading}
-                  className="h-14 w-full rounded-2xl bg-zinc-950 text-base font-bold text-white transition-transform active:scale-95 disabled:opacity-60 dark:bg-white dark:text-zinc-950"
-                >
-                  {loading ? "Đang lưu…" : "Lưu giá"}
-                </button>
-                <button
-                  onClick={() => setConfirmDelete(true)}
-                  className="flex h-10 w-full items-center justify-center gap-1.5 text-sm font-medium text-zinc-400"
-                >
-                  <Trash2 className="size-3.5" />
-                  Xóa giá custom trong khoảng này
-                </button>
-              </>
-            ) : (
-              <div className="rounded-2xl border border-red-200 p-4 dark:border-red-900">
-                <p className="mb-3 text-center text-sm text-zinc-600 dark:text-zinc-400">
-                  Xóa giá custom? Phòng sẽ dùng giá mặc định.
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setConfirmDelete(false)}
-                    className="h-11 flex-1 rounded-xl bg-zinc-100 text-sm font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-                  >
-                    Không
-                  </button>
-                  <button
-                    onClick={handleDelete}
-                    disabled={deleting}
-                    className="h-11 flex-1 rounded-xl bg-red-600 text-sm font-semibold text-white disabled:opacity-60"
-                  >
-                    {deleting ? "…" : "Xóa"}
-                  </button>
-                </div>
+              <div className="space-y-2 border-t border-zinc-100 pt-4 dark:border-zinc-800">
+                {!confirmDelete ? (
+                  <>
+                    <button
+                      onClick={handleSave}
+                      disabled={loading}
+                      className="h-14 w-full rounded-2xl bg-zinc-950 text-base font-bold text-white transition-transform active:scale-95 disabled:opacity-60 dark:bg-white dark:text-zinc-950"
+                    >
+                      {loading ? "Đang lưu…" : "Lưu giá"}
+                    </button>
+                    <button
+                      onClick={() => setConfirmDelete(true)}
+                      className="flex h-10 w-full items-center justify-center gap-1.5 text-sm font-medium text-zinc-400"
+                    >
+                      <Trash2 className="size-3.5" />
+                      Xóa giá custom trong khoảng này
+                    </button>
+                  </>
+                ) : (
+                  <div className="rounded-2xl border border-red-200 p-4 dark:border-red-900">
+                    <p className="mb-3 text-center text-sm text-zinc-600 dark:text-zinc-400">
+                      Xóa giá custom? Phòng sẽ dùng giá mặc định.
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setConfirmDelete(false)}
+                        className="h-11 flex-1 rounded-xl bg-zinc-100 text-sm font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                      >
+                        Không
+                      </button>
+                      <button
+                        onClick={handleDelete}
+                        disabled={deleting}
+                        className="h-11 flex-1 rounded-xl bg-red-600 text-sm font-semibold text-white disabled:opacity-60"
+                      >
+                        {deleting ? "…" : "Xóa"}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </Drawer.Content>
       </Drawer.Portal>

@@ -3,40 +3,34 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { CalendarDays, MessageSquare, LogOut, ChevronDown, Check, AlignJustify } from 'lucide-react'
+import { Building2, CalendarDays, MessageSquare, LogOut, Check, AlignJustify } from 'lucide-react'
 import { Drawer } from 'vaul'
 import { createClient } from '@/lib/supabase/client'
 import { BuildingProvider, useBuilding } from '@/components/building-context'
 import AppSidebar from '@/components/sidebar/AppSidebar'
 
 const navItems = [
-  { href: '/dashboard/calendar',  icon: CalendarDays,  label: 'Lịch' },
-  { href: '/dashboard/generator', icon: MessageSquare, label: 'Tin nhắn' },
+  { href: '/dashboard/calendar',   icon: CalendarDays,  label: 'Lịch' },
+  { href: '/dashboard/generator',  icon: MessageSquare, label: 'Tin nhắn' },
+  { href: '/dashboard/buildings',  icon: Building2,     label: 'Tòa nhà' },
 ]
 
-function BuildingPicker() {
+function BuildingTab() {
   const { buildings, selectedId, selectedBuilding, setSelectedId } = useBuilding()
   const [open, setOpen] = useState(false)
+
+  const shortName = selectedBuilding?.name ?? 'Tòa nhà'
 
   return (
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 rounded-xl py-1 pl-0 pr-2 transition-colors active:scale-95"
+        className="flex h-9 items-center gap-1.5 rounded-xl bg-zinc-100 px-3 text-sm font-semibold transition-colors active:scale-95 dark:bg-zinc-900"
       >
-        <div className="flex size-10 items-center justify-center rounded-xl bg-zinc-950 dark:bg-white">
-          <svg className="size-5 text-white dark:text-zinc-950" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2.5L1.5 11H4V21H9.5V15.5H14.5V21H20V11H22.5Z" />
-          </svg>
-        </div>
-        <div className="text-left">
-          <p className="text-sm font-bold leading-tight tracking-tight">
-            {selectedBuilding?.name ?? 'Chọn tòa nhà'}
-          </p>
-          <p className="flex items-center gap-0.5 text-[11px] text-zinc-400">
-            Đổi tòa <ChevronDown className="size-3" />
-          </p>
-        </div>
+        <Building2 className="size-4 shrink-0 text-zinc-500" />
+        <span className="max-w-28 truncate text-zinc-700 dark:text-zinc-300">
+          {shortName}
+        </span>
       </button>
 
       <Drawer.Root open={open} onOpenChange={setOpen}>
@@ -97,13 +91,14 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
       <AppSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="relative mx-auto flex min-h-dvh w-full max-w-130 flex-col bg-white shadow-2xl shadow-zinc-950/5 dark:bg-zinc-950">
-        {/* Header — building picker only */}
-        <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white/95 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
-          <div className="flex items-center justify-between">
-            <BuildingPicker />
+        {/* Header */}
+        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-zinc-200 bg-white/95 px-4 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
+          <span className="text-sm font-bold tracking-tight text-zinc-950 dark:text-white">OmniHost</span>
+          <div className="flex items-center gap-2">
+            <BuildingTab />
             <button
               onClick={handleLogout}
-              className="flex size-10 items-center justify-center rounded-xl bg-zinc-100 text-zinc-500 transition-colors active:scale-95 dark:bg-zinc-900"
+              className="flex size-9 items-center justify-center rounded-xl bg-zinc-100 text-zinc-500 transition-colors active:scale-95 dark:bg-zinc-900"
               aria-label="Sign out"
             >
               <LogOut className="size-4" />
@@ -115,9 +110,9 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           {children}
         </main>
 
-        {/* Bottom nav — 2 tabs + sidebar toggle */}
+        {/* Bottom nav — 4 tabs */}
         <nav className="fixed bottom-0 left-1/2 z-30 w-full max-w-130 -translate-x-1/2 border-t border-zinc-200 bg-white/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-4 gap-1">
             {navItems.map(item => {
               const isActive = pathname.startsWith(item.href)
               return (
@@ -138,7 +133,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
               )
             })}
 
-            {/* Sidebar toggle — rightmost */}
+            {/* Sidebar toggle */}
             <button
               onClick={() => setSidebarOpen(true)}
               className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 transition-colors hover:bg-zinc-50 active:scale-95 dark:hover:bg-zinc-900/50"

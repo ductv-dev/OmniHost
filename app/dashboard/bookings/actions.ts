@@ -146,6 +146,22 @@ export async function updateBooking(
     changed_by: user?.id ?? null,
   })
 
+  // Update guest record if any guest fields provided
+  const hasGuestUpdate = input.guest_full_name || input.guest_phone !== undefined ||
+    input.guest_email !== undefined || input.guest_country !== undefined
+  if (hasGuestUpdate) {
+    const { data: bk } = await supabase.from('bookings').select('guest_id').eq('id', id).single()
+    if (bk?.guest_id) {
+      const guestData: Record<string, unknown> = {}
+      if (input.guest_full_name) guestData.full_name = input.guest_full_name
+      if (input.guest_phone !== undefined) guestData.phone = input.guest_phone || null
+      if (input.guest_email !== undefined) guestData.email = input.guest_email || null
+      if (input.guest_country !== undefined) guestData.country = input.guest_country || null
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await supabase.from('guests').update(guestData as any).eq('id', bk.guest_id)
+    }
+  }
+
   revalidatePath('/dashboard/calendar')
   revalidatePath('/dashboard/bookings')
   revalidatePath(`/dashboard/bookings/${id}`)

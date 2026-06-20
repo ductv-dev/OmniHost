@@ -28,12 +28,19 @@ export interface CalBooking {
   check_out: string
   status: string
   source: string
+  guest_type: string
   total_price: number
   deposit_paid: number
   num_adults: number
   num_children: number
   note: string | null
-  guest: { full_name: string; phone: string | null } | null
+  guest: {
+    id: string
+    full_name: string
+    phone: string | null
+    email: string | null
+    country: string | null
+  } | null
 }
 
 export interface CalBlock {
