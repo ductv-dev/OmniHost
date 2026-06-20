@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Building2, ChevronRight, KeyRound, MapPin, Plus, Trash2, X } from 'lucide-react'
+import { Building2, ChevronRight, KeyRound, MapPin, Plus, X } from 'lucide-react'
 import { Drawer } from 'vaul'
 import { createClient } from '@/lib/supabase/client'
-import { createBuildingInline, deleteBuilding } from './actions'
+import { useBuilding } from '@/components/building-context'
+import { createBuildingInline } from './actions'
 
 interface Building {
   id: string
@@ -22,9 +23,16 @@ const textareaClass = 'flex min-h-20 w-full resize-none rounded-lg border-0 bg-b
 
 export default function BuildingsPage() {
   const router = useRouter()
+  const { selectedId } = useBuilding()
   const [buildings, setBuildings] = useState<Building[]>([])
   const [loading, setLoading] = useState(true)
   const [drawerOpen, setDrawerOpen] = useState(false)
+
+  useEffect(() => {
+    if (selectedId) {
+      router.replace(`/dashboard/buildings/${selectedId}`)
+    }
+  }, [selectedId, router])
 
   // form state
   const [name, setName] = useState('')
@@ -38,7 +46,6 @@ export default function BuildingsPage() {
   const [motorbikeNote, setMotorbikeNote] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   useEffect(() => {
     const supabase = createClient()
@@ -83,12 +90,6 @@ export default function BuildingsPage() {
     setBuildings((data ?? []) as Building[])
   }
 
-  async function handleDelete(id: string) {
-    await deleteBuilding(id)
-    setBuildings(prev => prev.filter(b => b.id !== id))
-    setConfirmDeleteId(null)
-  }
-
   return (
     <>
       <div className="space-y-4">
@@ -118,54 +119,30 @@ export default function BuildingsPage() {
             <div className="flex min-h-56 flex-col items-center justify-center rounded-lg border border-dashed border-zinc-300 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-950">
               <Building2 className="mb-3 size-9 text-zinc-400" />
               <p className="font-medium">Chưa có tòa nhà</p>
-              <p className="mt-1 text-sm text-zinc-500">Nhấn "Thêm tòa nhà" để bắt đầu.</p>
+              <p className="mt-1 text-sm text-zinc-500">Nhấn &ldquo;Thêm tòa nhà&rdquo; để bắt đầu.</p>
             </div>
           ) : (
             buildings.map(building => (
-              <div
+              <Link
                 key={building.id}
-                className="group relative overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950"
+                href={`/dashboard/buildings/${building.id}`}
+                className="block rounded-lg border border-zinc-200 bg-white p-4 shadow-sm transition-colors active:scale-[0.99] dark:border-zinc-800 dark:bg-zinc-950"
               >
-                <Link href={`/dashboard/buildings/${building.id}`} className={`block p-4 ${confirmDeleteId === building.id ? 'pr-30' : 'pr-14'}`}>
+                <div className="flex items-start justify-between gap-2">
                   <h3 className="truncate text-lg font-semibold">{building.name}</h3>
-                  <div className="mt-2 flex min-w-0 items-start gap-2 text-sm text-zinc-500">
-                    <MapPin className="mt-0.5 size-4 shrink-0" />
-                    <span className="line-clamp-2">{building.address}</span>
-                  </div>
-                  <div className="mt-3 flex items-center justify-between gap-3 text-xs text-zinc-500">
-                    <span className="inline-flex items-center gap-1 rounded-md bg-zinc-100 px-2 py-1 dark:bg-zinc-900">
-                      <KeyRound className="size-3.5" />
-                      {building.gate_password || 'Chưa có mã cổng'}
-                    </span>
-                    <ChevronRight className="size-5 text-zinc-400" />
-                  </div>
-                </Link>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  {confirmDeleteId === building.id ? (
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => setConfirmDeleteId(null)}
-                        className="flex h-8 items-center rounded-lg bg-zinc-100 px-2.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-                      >
-                        Hủy
-                      </button>
-                      <button
-                        onClick={() => handleDelete(building.id)}
-                        className="flex h-8 items-center rounded-lg bg-red-500 px-2.5 text-xs font-semibold text-white"
-                      >
-                        Xóa
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setConfirmDeleteId(building.id)}
-                      className="flex size-9 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
-                  )}
+                  <ChevronRight className="mt-0.5 size-5 shrink-0 text-zinc-400" />
                 </div>
-              </div>
+                <div className="mt-2 flex min-w-0 items-start gap-2 text-sm text-zinc-500">
+                  <MapPin className="mt-0.5 size-4 shrink-0" />
+                  <span className="line-clamp-2">{building.address}</span>
+                </div>
+                <div className="mt-3">
+                  <span className="inline-flex items-center gap-1 rounded-md bg-zinc-100 px-2 py-1 text-xs text-zinc-500 dark:bg-zinc-900">
+                    <KeyRound className="size-3.5" />
+                    {building.gate_password || 'Chưa có mã cổng'}
+                  </span>
+                </div>
+              </Link>
             ))
           )}
         </div>

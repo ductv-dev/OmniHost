@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Settings, MessageSquare, Home } from 'lucide-react'
 import BuildingForm from '../building-form'
 import RoomsTab from './rooms-tab'
 import TemplatesTab from './templates-tab'
 import { Tables } from '@/types/supabase'
 import { parseMessageTemplates } from '@/lib/constants/templates'
+import { useBuilding } from '@/components/building-context'
 
 export default function BuildingHubClient({
   building,
@@ -15,7 +16,13 @@ export default function BuildingHubClient({
   building: Tables<'buildings'>
   rooms: Tables<'rooms'>[]
 }) {
+  const { setSelectedId } = useBuilding()
   const [activeTab, setActiveTab] = useState<'rooms' | 'templates' | 'settings'>('rooms')
+
+  // When navigating directly to /buildings/[id], sync header picker to this building
+  useEffect(() => {
+    setSelectedId(building.id)
+  }, [building.id, setSelectedId])
   const templateCount = parseMessageTemplates(building.custom_templates).length
 
   const tabs = [

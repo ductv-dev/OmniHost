@@ -3,16 +3,17 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Building2, CalendarDays, MessageSquare, LogOut, Check, AlignJustify } from 'lucide-react'
+import { Building2, CalendarDays, MessageSquare, LogOut, Check, AlignJustify, CalendarCheck } from 'lucide-react'
 import { Drawer } from 'vaul'
 import { createClient } from '@/lib/supabase/client'
 import { BuildingProvider, useBuilding } from '@/components/building-context'
 import AppSidebar from '@/components/sidebar/AppSidebar'
 
-const navItems = [
-  { href: '/dashboard/calendar',   icon: CalendarDays,  label: 'Lịch' },
-  { href: '/dashboard/generator',  icon: MessageSquare, label: 'Tin nhắn' },
-  { href: '/dashboard/buildings',  icon: Building2,     label: 'Tòa nhà' },
+const staticNavItems = [
+  { href: '/dashboard/today',        icon: CalendarCheck, label: 'Hôm nay' },
+  { href: '/dashboard/calendar',     icon: CalendarDays,  label: 'Lịch' },
+  { href: '/dashboard/generator',    icon: MessageSquare, label: 'Tin nhắn' },
+  { href: '/dashboard/my-building',  icon: Building2,     label: 'Tòa nhà' },
 ]
 
 function BuildingTab() {
@@ -110,16 +111,19 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           {children}
         </main>
 
-        {/* Bottom nav — 4 tabs */}
+        {/* Bottom nav — 5 tabs */}
         <nav className="fixed bottom-0 left-1/2 z-30 w-full max-w-130 -translate-x-1/2 border-t border-zinc-200 bg-white/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
-          <div className="grid grid-cols-4 gap-1">
-            {navItems.map(item => {
-              const isActive = pathname.startsWith(item.href)
+          <div className="grid grid-cols-5 gap-1">
+            {staticNavItems.map(item => {
+              const isActive =
+                item.href === '/dashboard/my-building'
+                  ? pathname.startsWith('/dashboard/my-building') || pathname.startsWith('/dashboard/buildings')
+                  : pathname.startsWith(item.href)
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 transition-colors active:scale-95 ${
+                  className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 transition-colors active:scale-95 ${
                     isActive
                       ? 'bg-zinc-100 dark:bg-zinc-900'
                       : 'hover:bg-zinc-50 dark:hover:bg-zinc-900/50'
@@ -136,7 +140,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             {/* Sidebar toggle */}
             <button
               onClick={() => setSidebarOpen(true)}
-              className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 transition-colors hover:bg-zinc-50 active:scale-95 dark:hover:bg-zinc-900/50"
+              className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 transition-colors hover:bg-zinc-50 active:scale-95 dark:hover:bg-zinc-900/50"
             >
               <AlignJustify className="size-5 text-zinc-500" />
               <span className="text-[11px] font-semibold leading-none text-zinc-500">Menu</span>

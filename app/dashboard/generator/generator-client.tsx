@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useRef } from 'react'
+import { useBuilding } from '@/components/building-context'
 import {
   Copy, CheckCircle2, Plus, X, Search,
   Building2, PenLine, ListOrdered,
@@ -73,9 +74,16 @@ export default function GeneratorClient({
   commonTemplates: Tables<'common_templates'>[]
   initialFlows: Tables<'message_flows'>[]
 }) {
-  // context
-  const [selectedBuildingId, setSelectedBuildingId] = useState('')
+  // sync building selection from header context (React derived-state pattern)
+  const { selectedId: contextBuildingId } = useBuilding()
+  const [selectedBuildingId, setSelectedBuildingId] = useState(contextBuildingId ?? '')
+  const [prevContextId, setPrevContextId] = useState(contextBuildingId)
   const [selectedRoomId, setSelectedRoomId] = useState('')
+
+  if (prevContextId !== contextBuildingId) {
+    setPrevContextId(contextBuildingId)
+    if (contextBuildingId) setSelectedBuildingId(contextBuildingId)
+  }
 
   // tabs
   const [activeTab, setActiveTab] = useState<'browse' | 'flows' | 'queue'>('browse')

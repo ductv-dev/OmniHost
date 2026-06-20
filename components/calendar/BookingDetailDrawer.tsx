@@ -70,7 +70,7 @@ export default function BookingDetailDrawer({
   const nights = differenceInDays(parseISO(booking.check_out), parseISO(booking.check_in))
   const remaining = booking.total_price - booking.deposit_paid
   const nextStatus = NEXT_STATUS[booking.status]
-  const canModify = booking.status !== 'cancelled' && booking.status !== 'checked_out' && booking.status !== 'no_show'
+  const canModify = booking.status !== 'cancelled'
 
   async function handleStatusUpdate(status: string) {
     setLoading(true)
