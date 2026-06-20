@@ -1,7 +1,7 @@
 'use client'
 
 import { AnimatePresence, motion } from 'framer-motion'
-import { X, Building2, FileText, Plus, MessageSquare } from 'lucide-react'
+import { X, FileText, Plus, MessageSquare } from 'lucide-react'
 import Link from 'next/link'
 
 interface NavLink {
@@ -13,16 +13,10 @@ interface NavLink {
 
 const NAV_SECTIONS: { title: string; links: NavLink[] }[] = [
   {
-    title: 'Tòa nhà & phòng',
-    links: [
-      { href: '/dashboard/buildings', icon: Building2, label: 'Tòa nhà & phòng' },
-    ],
-  },
-  {
     title: 'Tin nhắn',
     links: [
-      { href: '/dashboard/templates',     icon: FileText,    label: 'Mẫu tin nhắn' },
-      { href: '/dashboard/templates/new', icon: Plus,        label: 'Tạo template mới', sub: true },
+      { href: '/dashboard/templates',     icon: FileText,      label: 'Mẫu tin nhắn' },
+      { href: '/dashboard/templates/new', icon: Plus,          label: 'Tạo template mới', sub: true },
       { href: '/dashboard/generator',     icon: MessageSquare, label: 'Sinh tin nhắn' },
     ],
   },

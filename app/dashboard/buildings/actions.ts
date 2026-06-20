@@ -84,12 +84,12 @@ export async function createBuildingInline(input: {
   lobby_wifi_password?: string
   drinking_water_note?: string
   motorbike_parking_note?: string
-}): Promise<{ success: true } | { error: string }> {
+}): Promise<{ id: string } | { error: string }> {
   if (!input.name?.trim()) return { error: 'Nhập tên tòa nhà' }
   if (!input.address?.trim()) return { error: 'Nhập địa chỉ' }
 
   const supabase = await createClient()
-  const { error } = await supabase.from('buildings').insert([{
+  const { data, error } = await supabase.from('buildings').insert([{
     name: input.name.trim(),
     sign_name: input.sign_name?.trim() || null,
     address: input.address.trim(),
@@ -100,12 +100,12 @@ export async function createBuildingInline(input: {
     drinking_water_note: input.drinking_water_note?.trim() || null,
     motorbike_parking_note: input.motorbike_parking_note?.trim() || null,
     custom_templates: defaultTemplates as any,
-  }])
+  }]).select('id').single()
 
   if (error) return { error: error.message }
 
-  revalidatePath('/dashboard/buildings')
-  return { success: true }
+  revalidatePath('/dashboard/my-building')
+  return { id: data.id }
 }
 
 export async function updateBuilding(id: string, formData: FormData) {

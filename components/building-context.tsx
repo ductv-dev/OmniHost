@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 export interface BuildingOption {
   id: string
   name: string
+  address: string
 }
 
 interface BuildingContextValue {
@@ -13,6 +14,7 @@ interface BuildingContextValue {
   selectedId: string | null
   selectedBuilding: BuildingOption | null
   setSelectedId: (id: string) => void
+  refetchBuildings: () => Promise<void>
   loading: boolean
 }
 
@@ -25,21 +27,26 @@ export function BuildingProvider({ children }: { children: ReactNode }) {
   const [selectedId, setSelectedIdState] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
+  async function fetchBuildings() {
     const supabase = createClient()
-    supabase
+    const { data } = await supabase
       .from('buildings')
-      .select('id, name')
+      .select('id, name, address')
       .order('name')
-      .then(({ data }) => {
-        const list = (data ?? []) as BuildingOption[]
-        setBuildings(list)
-        const saved = localStorage.getItem(STORAGE_KEY)
-        const valid = saved && list.find(b => b.id === saved) ? saved : (list[0]?.id ?? null)
-        setSelectedIdState(valid)
-        if (valid) localStorage.setItem(STORAGE_KEY, valid)
-        setLoading(false)
-      })
+    const list = (data ?? []) as BuildingOption[]
+    setBuildings(list)
+    return list
+  }
+
+  useEffect(() => {
+    fetchBuildings().then(list => {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      const valid = saved && list.find(b => b.id === saved) ? saved : (list[0]?.id ?? null)
+      setSelectedIdState(valid)
+      if (valid) localStorage.setItem(STORAGE_KEY, valid)
+      setLoading(false)
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function setSelectedId(id: string) {
@@ -47,10 +54,21 @@ export function BuildingProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, id)
   }
 
+  async function refetchBuildings() {
+    const list = await fetchBuildings()
+    // keep selection valid after refetch
+    setSelectedIdState(prev => {
+      if (prev && list.find(b => b.id === prev)) return prev
+      const fallback = list[0]?.id ?? null
+      if (fallback) localStorage.setItem(STORAGE_KEY, fallback)
+      return fallback
+    })
+  }
+
   const selectedBuilding = buildings.find(b => b.id === selectedId) ?? null
 
   return (
-    <BuildingContext.Provider value={{ buildings, selectedId, selectedBuilding, setSelectedId, loading }}>
+    <BuildingContext.Provider value={{ buildings, selectedId, selectedBuilding, setSelectedId, refetchBuildings, loading }}>
       {children}
     </BuildingContext.Provider>
   )

@@ -3,10 +3,10 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Building2, CalendarDays, MessageSquare, LogOut, Check, AlignJustify, CalendarCheck } from 'lucide-react'
-import { Drawer } from 'vaul'
+import { Building2, CalendarDays, MessageSquare, LogOut, AlignJustify, CalendarCheck } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { BuildingProvider, useBuilding } from '@/components/building-context'
+import BuildingPicker from '@/components/building-picker'
 import AppSidebar from '@/components/sidebar/AppSidebar'
 
 const staticNavItems = [
@@ -17,10 +17,8 @@ const staticNavItems = [
 ]
 
 function BuildingTab() {
-  const { buildings, selectedId, selectedBuilding, setSelectedId } = useBuilding()
+  const { selectedBuilding } = useBuilding()
   const [open, setOpen] = useState(false)
-
-  const shortName = selectedBuilding?.name ?? 'Tòa nhà'
 
   return (
     <>
@@ -30,48 +28,11 @@ function BuildingTab() {
       >
         <Building2 className="size-4 shrink-0 text-zinc-500" />
         <span className="max-w-28 truncate text-zinc-700 dark:text-zinc-300">
-          {shortName}
+          {selectedBuilding?.name ?? 'Tòa nhà'}
         </span>
       </button>
 
-      <Drawer.Root open={open} onOpenChange={setOpen}>
-        <Drawer.Portal>
-          <Drawer.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" />
-          <Drawer.Content
-            className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[2rem] border-t border-white/20 bg-white/95 shadow-2xl backdrop-blur-3xl dark:bg-zinc-900/95"
-            aria-label="Chọn tòa nhà"
-          >
-            <div className="px-5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-4">
-              <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-zinc-300 dark:bg-zinc-600" />
-              <Drawer.Title className="mb-4 text-base font-bold text-zinc-950 dark:text-white">
-                Chọn tòa nhà
-              </Drawer.Title>
-              <div className="space-y-2">
-                {buildings.map(b => {
-                  const isSelected = b.id === selectedId
-                  return (
-                    <button
-                      key={b.id}
-                      onClick={() => { setSelectedId(b.id); setOpen(false) }}
-                      className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition-colors ${
-                        isSelected
-                          ? 'bg-zinc-950 text-white dark:bg-white dark:text-zinc-950'
-                          : 'bg-zinc-50 text-zinc-700 active:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300'
-                      }`}
-                    >
-                      <span className="flex-1 text-sm font-semibold">{b.name}</span>
-                      {isSelected && <Check className="size-4 shrink-0" />}
-                    </button>
-                  )
-                })}
-                {buildings.length === 0 && (
-                  <p className="py-4 text-center text-sm text-zinc-400">Chưa có tòa nhà nào</p>
-                )}
-              </div>
-            </div>
-          </Drawer.Content>
-        </Drawer.Portal>
-      </Drawer.Root>
+      <BuildingPicker open={open} onOpenChange={setOpen} />
     </>
   )
 }
