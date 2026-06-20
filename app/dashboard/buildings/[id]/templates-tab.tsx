@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useRef, useState } from 'react'
-import { Plus, Edit2, Trash2, Building2, PenLine, X } from 'lucide-react'
+import { Plus, Edit2, Trash2, Building2, PenLine, ChevronDown } from 'lucide-react'
 import { Drawer } from 'vaul'
 import {
   DB_VARIABLES,
@@ -45,10 +45,11 @@ export default function TemplatesTab({ building }: { building: Tables<'buildings
   const [type, setType] = useState<TemplateType>('building')
   const [content, setContent] = useState('')
 
-  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [varPickerOpen, setVarPickerOpen] = useState(false)
   const [customVarInput, setCustomVarInput] = useState('')
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const savedSelectionRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 })
 
   const handleOpenModal = (template?: MessageTemplate) => {
     if (template) {
@@ -65,6 +66,7 @@ export default function TemplatesTab({ building }: { building: Tables<'buildings
       setContent('')
     }
     setError(null)
+    setVarPickerOpen(false)
     setIsModalOpen(true)
   }
 
@@ -123,22 +125,25 @@ export default function TemplatesTab({ building }: { building: Tables<'buildings
     await saveToDb(newTemplates)
   }
 
+  const saveSelection = () => {
+    const el = textareaRef.current
+    if (el) savedSelectionRef.current = { start: el.selectionStart, end: el.selectionEnd }
+  }
+
   const insertVariable = (key: string) => {
     const token = `{{${key}}}`
     const textarea = textareaRef.current
+    const { start, end } = savedSelectionRef.current
+    const newContent = content.slice(0, start) + token + content.slice(end)
+    setContent(newContent)
+    const cursor = start + token.length
+    savedSelectionRef.current = { start: cursor, end: cursor }
     if (textarea) {
-      const start = textarea.selectionStart
-      const end = textarea.selectionEnd
-      const newContent = content.slice(0, start) + token + content.slice(end)
-      setContent(newContent)
       setTimeout(() => {
-        textarea.selectionStart = textarea.selectionEnd = start + token.length
+        textarea.selectionStart = textarea.selectionEnd = cursor
         textarea.focus()
       }, 0)
-    } else {
-      setContent(c => (c ? `${c}\n${token}` : token))
     }
-    setDrawerOpen(false)
   }
 
   const insertCustomVar = () => {
@@ -160,8 +165,7 @@ export default function TemplatesTab({ building }: { building: Tables<'buildings
   const databaseKeys = useMemo(() => extractDatabaseVariables(content, type), [content, type])
   const manualKeys = useMemo(() => extractDynamicVariables(content, type), [content, type])
 
-  const variableSuggestions =
-    type === 'building' ? DB_VARIABLES : MANUAL_VARIABLE_SUGGESTIONS
+  const variableSuggestions = type === 'building' ? DB_VARIABLES : MANUAL_VARIABLE_SUGGESTIONS
 
   return (
     <div className="space-y-6">
@@ -246,7 +250,6 @@ export default function TemplatesTab({ building }: { building: Tables<'buildings
         )}
       </div>
 
-      {/* Modal */}
       <Drawer.Root open={isModalOpen} onOpenChange={v => { if (!v) setIsModalOpen(false) }}>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 z-200 bg-black/40 backdrop-blur-sm" />
@@ -254,7 +257,6 @@ export default function TemplatesTab({ building }: { building: Tables<'buildings
             className="fixed bottom-0 left-0 right-0 z-200 flex max-h-[90svh] flex-col rounded-t-[2rem] bg-white/95 shadow-2xl backdrop-blur-3xl dark:bg-zinc-900/95 max-w-130 mx-auto"
             aria-label={editingTemplate ? 'Sửa template' : 'Template mới'}
           >
-            {/* header */}
             <div className="shrink-0 px-4 pt-3 pb-3">
               <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-zinc-200 dark:bg-zinc-800" />
               <Drawer.Title className="text-lg font-semibold">
@@ -262,7 +264,6 @@ export default function TemplatesTab({ building }: { building: Tables<'buildings
               </Drawer.Title>
             </div>
 
-            {/* scrollable body */}
             <div className="flex-1 overflow-y-auto border-t border-zinc-100 px-4 py-4 dark:border-zinc-900">
               <div className="space-y-5">
                 {/* Loại template */}
@@ -278,9 +279,7 @@ export default function TemplatesTab({ building }: { building: Tables<'buildings
                           : 'border-zinc-200 dark:border-zinc-800'
                       }`}
                     >
-                      <Building2
-                        className={`size-6 ${type === 'building' ? 'text-zinc-950 dark:text-zinc-50' : 'text-zinc-400'}`}
-                      />
+                      <Building2 className={`size-6 ${type === 'building' ? 'text-zinc-950 dark:text-zinc-50' : 'text-zinc-400'}`} />
                       <div className="text-center">
                         <p className="text-sm font-semibold">Building</p>
                         <p className="text-xs text-muted-foreground">Tự điền từ DB tòa/phòng</p>
@@ -295,9 +294,7 @@ export default function TemplatesTab({ building }: { building: Tables<'buildings
                           : 'border-zinc-200 dark:border-zinc-800'
                       }`}
                     >
-                      <PenLine
-                        className={`size-6 ${type === 'custom' ? 'text-zinc-950 dark:text-zinc-50' : 'text-zinc-400'}`}
-                      />
+                      <PenLine className={`size-6 ${type === 'custom' ? 'text-zinc-950 dark:text-zinc-50' : 'text-zinc-400'}`} />
                       <div className="text-center">
                         <p className="text-sm font-semibold">Custom</p>
                         <p className="text-xs text-muted-foreground">Toàn bộ điền tay</p>
@@ -306,60 +303,113 @@ export default function TemplatesTab({ building }: { building: Tables<'buildings
                   </div>
                 </div>
 
+                {/* Tên + danh mục */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Tên template</Label>
-                    <Input
-                      value={name}
-                      onChange={e => setName(e.target.value)}
-                      placeholder="VD: Check-in cuối tuần"
-                    />
+                    <Input value={name} onChange={e => setName(e.target.value)} placeholder="VD: Check-in cuối tuần" />
                   </div>
                   <div className="space-y-2">
                     <Label>Danh mục</Label>
-                    <Input
-                      value={category}
-                      onChange={e => setCategory(e.target.value)}
-                      placeholder="VD: Check-in"
-                    />
+                    <Input value={category} onChange={e => setCategory(e.target.value)} placeholder="VD: Check-in" />
                   </div>
                 </div>
 
-                {/* Nội dung + nút chèn biến */}
+                {/* Nội dung + inline variable picker */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label>Nội dung tin nhắn</Label>
                     <button
                       type="button"
-                      onClick={() => setDrawerOpen(true)}
+                      onClick={() => setVarPickerOpen(v => !v)}
                       className="flex items-center gap-1 rounded-lg bg-zinc-100 px-2.5 py-1.5 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-200 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
                     >
-                      <Plus className="size-3.5" /> Chèn biến
+                      <Plus className="size-3.5" />
+                      Chèn biến
+                      <ChevronDown className={`size-3.5 transition-transform ${varPickerOpen ? 'rotate-180' : ''}`} />
                     </button>
                   </div>
+
+                  {/* Inline variable picker — no overlay, no conflict */}
+                  {varPickerOpen && (
+                    <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-900/50">
+                      <div className="space-y-3">
+                        <div>
+                          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                            {type === 'building' ? 'Biến tòa/phòng (tự điền)' : 'Biến thường dùng'}
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {variableSuggestions.map(v => (
+                              <button
+                                key={v.key}
+                                type="button"
+                                onClick={() => insertVariable(v.key)}
+                                title={v.description}
+                                className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium transition-colors active:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:active:bg-zinc-700"
+                              >
+                                {`{{${v.key}}}`}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="border-t border-zinc-200 pt-3 dark:border-zinc-700">
+                          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                            Biến tùy chỉnh
+                          </p>
+                          <div className="flex gap-2">
+                            <Input
+                              value={customVarInput}
+                              onChange={e => setCustomVarInput(normalizeVarName(e.target.value))}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') { e.preventDefault(); insertCustomVar() }
+                              }}
+                              placeholder="ten-bien-tuy-chinh"
+                              className="h-9 flex-1 text-xs"
+                            />
+                            <Button
+                              type="button"
+                              onClick={insertCustomVar}
+                              disabled={!customVarInput || !/^[a-z]/.test(customVarInput)}
+                              size="sm"
+                              className="h-9 shrink-0"
+                            >
+                              <Plus className="size-3.5" />
+                            </Button>
+                          </div>
+                          {customVarInput && /^[a-z]/.test(customVarInput) && (
+                            <p className="mt-1.5 text-xs text-zinc-500">
+                              Sẽ chèn:{' '}
+                              <code className="rounded bg-zinc-200 px-1 font-mono dark:bg-zinc-700">
+                                {`{{${customVarInput}}}`}
+                              </code>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <textarea
                     ref={textareaRef}
                     value={content}
                     onChange={e => setContent(e.target.value)}
+                    onSelect={saveSelection}
+                    onBlur={saveSelection}
                     className="flex min-h-52 w-full rounded-lg border-0 bg-black/5 px-4 py-3 text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
                     placeholder="Nội dung tin nhắn..."
                   />
                 </div>
 
-                {/* Biến phát hiện */}
+                {/* Biến phát hiện trong nội dung */}
                 {(databaseKeys.length > 0 || manualKeys.length > 0) && (
                   <div className="space-y-3 rounded-lg bg-black/5 p-4 text-sm dark:bg-white/5">
                     {databaseKeys.length > 0 && (
                       <div>
-                        <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
-                          Tự điền từ phòng
-                        </p>
+                        <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Tự điền từ phòng</p>
                         <div className="flex flex-wrap gap-2">
                           {databaseKeys.map(key => (
-                            <span
-                              key={key}
-                              className="rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
-                            >
+                            <span key={key} className="rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
                               {`{{${key}}}`}
                             </span>
                           ))}
@@ -368,15 +418,10 @@ export default function TemplatesTab({ building }: { building: Tables<'buildings
                     )}
                     {manualKeys.length > 0 && (
                       <div>
-                        <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
-                          Ô điền tay khi dùng
-                        </p>
+                        <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Ô điền tay khi dùng</p>
                         <div className="flex flex-wrap gap-2">
                           {manualKeys.map(key => (
-                            <span
-                              key={key}
-                              className="rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
-                            >
+                            <span key={key} className="rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
                               {`{{${key}}}`}
                             </span>
                           ))}
@@ -392,115 +437,12 @@ export default function TemplatesTab({ building }: { building: Tables<'buildings
               </div>
             </div>
 
-            {/* sticky footer */}
             <div className="shrink-0 grid grid-cols-2 gap-3 border-t border-zinc-200 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-zinc-800">
-              <Button
-                variant="outline"
-                className="h-12 rounded-xl"
-                onClick={() => setIsModalOpen(false)}
-              >
+              <Button variant="outline" className="h-12 rounded-xl" onClick={() => setIsModalOpen(false)}>
                 Hủy
               </Button>
               <Button onClick={handleSave} className="h-12 rounded-xl" disabled={isLoading}>
                 {isLoading ? 'Đang lưu...' : 'Lưu template'}
-              </Button>
-            </div>
-          </Drawer.Content>
-        </Drawer.Portal>
-      </Drawer.Root>
-
-      {/* Variable Drawer */}
-      <Drawer.Root open={drawerOpen} onOpenChange={v => { if (!v) setDrawerOpen(false) }}>
-        <Drawer.Portal>
-          <Drawer.Overlay className="fixed inset-0 z-300 bg-black/40 backdrop-blur-sm" />
-          <Drawer.Content
-            className="fixed bottom-0 left-0 right-0 z-300 flex max-h-[80svh] flex-col rounded-t-[2rem] bg-white/95 shadow-2xl backdrop-blur-3xl dark:bg-zinc-900/95 max-w-130 mx-auto"
-            aria-label="Chèn biến"
-          >
-            {/* drag pill */}
-            <div className="mx-auto mt-3 mb-1 h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-600" />
-            {/* header */}
-            <div className="shrink-0 flex items-center justify-between px-4 pt-2 pb-3">
-              <Drawer.Title className="font-semibold">Chèn biến</Drawer.Title>
-              <button
-                onClick={() => setDrawerOpen(false)}
-                className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900"
-              >
-                <X className="size-5" />
-              </button>
-            </div>
-
-            {/* scrollable body */}
-            <div className="flex-1 overflow-y-auto border-t border-zinc-100 px-4 py-4 dark:border-zinc-900">
-              <div className="space-y-3">
-                <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                  {type === 'building' ? 'Biến tòa/phòng (tự điền)' : 'Biến thường dùng'}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {variableSuggestions.map(v => (
-                    <button
-                      key={v.key}
-                      type="button"
-                      onClick={() => insertVariable(v.key)}
-                      title={v.description}
-                      className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium transition-colors hover:border-zinc-300 hover:bg-zinc-50 active:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700 dark:hover:bg-zinc-800"
-                    >
-                      {`{{${v.key}}}`}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="my-4 border-t border-zinc-100 dark:border-zinc-900" />
-
-              <div className="space-y-3">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                    Biến tùy chỉnh
-                  </p>
-                  <p className="mt-0.5 text-xs text-zinc-500">
-                    Gõ tên biến rồi bấm thêm. VD:{' '}
-                    <code className="font-mono">ten-wifi</code> →{' '}
-                    <code className="font-mono">{`{{ten-wifi}}`}</code>
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <Input
-                    value={customVarInput}
-                    onChange={e => setCustomVarInput(normalizeVarName(e.target.value))}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        insertCustomVar()
-                      }
-                    }}
-                    placeholder="ten-bien-tuy-chinh"
-                    className="flex-1"
-                  />
-                  <Button
-                    type="button"
-                    onClick={insertCustomVar}
-                    disabled={!customVarInput || !/^[a-z]/.test(customVarInput)}
-                    className="shrink-0"
-                  >
-                    <Plus className="size-4" />
-                  </Button>
-                </div>
-                {customVarInput && /^[a-z]/.test(customVarInput) && (
-                  <p className="text-xs text-zinc-500">
-                    Sẽ chèn:{' '}
-                    <code className="rounded bg-zinc-100 px-1 font-mono dark:bg-zinc-900">
-                      {`{{${customVarInput}}}`}
-                    </code>
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* sticky footer */}
-            <div className="shrink-0 border-t border-zinc-100 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-zinc-900">
-              <Button className="h-11 w-full rounded-xl" onClick={() => setDrawerOpen(false)}>
-                Xong
               </Button>
             </div>
           </Drawer.Content>

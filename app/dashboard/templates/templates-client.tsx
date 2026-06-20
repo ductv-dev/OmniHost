@@ -375,10 +375,9 @@ export default function TemplatesClient({
             </div>
           </Drawer.Content>
         </Drawer.Portal>
-      </Drawer.Root>
 
-      {/* Variable Drawer (on top of modal) */}
-      <Drawer.Root open={drawerOpen} onOpenChange={v => { if (!v) setDrawerOpen(false) }}>
+        {/* Variable picker — nested inside Root so vaul handles context correctly */}
+        <Drawer.NestedRoot open={drawerOpen} onOpenChange={v => { if (!v) setDrawerOpen(false) }}>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 z-300 bg-black/40 backdrop-blur-sm" />
           <Drawer.Content
@@ -469,6 +468,7 @@ export default function TemplatesClient({
             </div>
           </Drawer.Content>
         </Drawer.Portal>
+        </Drawer.NestedRoot>
       </Drawer.Root>
     </div>
   )
