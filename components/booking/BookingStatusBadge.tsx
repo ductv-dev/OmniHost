@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge'
 import type { BookingSource, BookingStatus } from '@/types/booking'
+import SourceIcon from './SourceIcon'
 
 const STATUS_CONFIG: Record<
   BookingStatus,
@@ -33,7 +34,8 @@ export function BookingStatusBadge({ status }: { status: BookingStatus }) {
 export function BookingSourceBadge({ source }: { source: BookingSource }) {
   const cfg = SOURCE_CONFIG[source]
   return (
-    <Badge className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${cfg.className}`}>
+    <Badge className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${cfg.className}`}>
+      <SourceIcon source={source} size={11} />
       {cfg.label}
     </Badge>
   )

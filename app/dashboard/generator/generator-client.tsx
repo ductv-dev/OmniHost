@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import {
   Copy, CheckCircle2, Plus, X, Search,
   Building2, PenLine, ListOrdered,
   ChevronUp, ChevronDown, Edit2, Trash2, Layers,
 } from 'lucide-react'
+import { Drawer } from 'vaul'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
@@ -14,6 +15,8 @@ import {
   extractDynamicVariables,
   formatVariableLabel,
   parseMessageTemplates,
+  MANUAL_VARIABLE_SUGGESTIONS,
+  getTemplateSyntaxIssues,
 } from '@/lib/constants/templates'
 import { Tables } from '@/types/supabase'
 import {
@@ -103,6 +106,12 @@ export default function GeneratorClient({
   const [tplContent, setTplContent] = useState('')
   const [tplSaving, setTplSaving] = useState(false)
   const [tplError, setTplError] = useState<string | null>(null)
+  const [tplVarDrawerOpen, setTplVarDrawerOpen] = useState(false)
+  const [tplCustomVarInput, setTplCustomVarInput] = useState('')
+  const tplTextareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // flow delete confirm
+  const [confirmDeleteFlowId, setConfirmDeleteFlowId] = useState<string | null>(null)
 
   // flow editor modal
   const [flowModalOpen, setFlowModalOpen] = useState(false)
@@ -213,6 +222,36 @@ export default function GeneratorClient({
       return acc
     }, {} as Record<string, MessageTemplate[]>)
   , [filteredFlowTemplates])
+
+  // ── create template helpers ───────────────────────────────────────────────
+
+  const insertTplVariable = (key: string) => {
+    const token = `{{${key}}}`
+    const ta = tplTextareaRef.current
+    if (ta) {
+      const start = ta.selectionStart
+      const end = ta.selectionEnd
+      const next = tplContent.slice(0, start) + token + tplContent.slice(end)
+      setTplContent(next)
+      setTimeout(() => {
+        ta.selectionStart = ta.selectionEnd = start + token.length
+        ta.focus()
+      }, 0)
+    } else {
+      setTplContent(c => c ? `${c}\n${token}` : token)
+    }
+    setTplVarDrawerOpen(false)
+  }
+
+  const insertTplCustomVar = () => {
+    const normalized = tplCustomVarInput.toLowerCase().trim()
+      .replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/^-+|-+$/g, '')
+    if (!normalized || !/^[a-z]/.test(normalized)) return
+    insertTplVariable(normalized)
+    setTplCustomVarInput('')
+  }
+
+  const tplSyntaxIssues = getTemplateSyntaxIssues(tplContent)
 
   // ── create template handler ───────────────────────────────────────────────
 
@@ -373,10 +412,10 @@ export default function GeneratorClient({
   }
 
   const handleDeleteFlow = async (id: string) => {
-    if (!confirm('Xóa luồng này?')) return
     const result = await deleteMessageFlow(id)
     if ('error' in result) return
     setFlows(prev => prev.filter(f => f.id !== id))
+    setConfirmDeleteFlowId(null)
   }
 
   // ─── render ───────────────────────────────────────────────────────────────
@@ -535,18 +574,37 @@ export default function GeneratorClient({
                         </p>
                       </div>
                       <div className="flex shrink-0 items-center gap-1">
-                        <button
-                          onClick={() => openFlowModal(flow)}
-                          className="rounded-lg bg-zinc-100 p-2 text-zinc-500 transition-colors hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800"
-                        >
-                          <Edit2 className="size-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteFlow(flow.id)}
-                          className="rounded-lg bg-red-500/10 p-2 text-red-500 transition-colors hover:bg-red-500/20"
-                        >
-                          <Trash2 className="size-4" />
-                        </button>
+                        {confirmDeleteFlowId !== flow.id && (
+                          <button
+                            onClick={() => openFlowModal(flow)}
+                            className="rounded-lg bg-zinc-100 p-2 text-zinc-500 transition-colors hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+                          >
+                            <Edit2 className="size-4" />
+                          </button>
+                        )}
+                        {confirmDeleteFlowId === flow.id ? (
+                          <>
+                            <button
+                              onClick={() => setConfirmDeleteFlowId(null)}
+                              className="flex h-8 items-center rounded-lg bg-zinc-100 px-2.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                            >
+                              Hủy
+                            </button>
+                            <button
+                              onClick={() => handleDeleteFlow(flow.id)}
+                              className="flex h-8 items-center rounded-lg bg-red-500 px-2.5 text-xs font-semibold text-white"
+                            >
+                              Xóa
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmDeleteFlowId(flow.id)}
+                            className="rounded-lg bg-red-500/10 p-2 text-red-500 transition-colors hover:bg-red-500/20"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        )}
                       </div>
                     </div>
                     <div className="border-t border-zinc-100 px-4 py-3 dark:border-zinc-900">
@@ -665,23 +723,22 @@ export default function GeneratorClient({
       )}
 
       {/* ── Template Sheet ── */}
-      {sheetTemplate && (
-        <div
-          className="fixed inset-0 z-200 flex items-end justify-center bg-black/50 backdrop-blur-sm"
-          onClick={e => { if (e.target === e.currentTarget) closeSheet() }}
-        >
-          <div className="flex max-h-[92dvh] w-full max-w-130 flex-col rounded-t-2xl bg-white shadow-2xl dark:bg-zinc-950">
-            {/* pill */}
-            <div className="flex shrink-0 justify-center pt-3 pb-1">
-              <div className="h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-700" />
-            </div>
+      <Drawer.Root open={!!sheetTemplate} onOpenChange={v => { if (!v) closeSheet() }}>
+        <Drawer.Portal>
+          <Drawer.Overlay className="fixed inset-0 z-200 bg-black/40 backdrop-blur-sm" />
+          <Drawer.Content
+            className="fixed bottom-0 left-0 right-0 z-200 flex max-h-[90dvh] flex-col rounded-t-[2rem] bg-white/95 shadow-2xl backdrop-blur-3xl dark:bg-zinc-900/95 max-w-130 mx-auto"
+            aria-label={sheetTemplate?.name ?? 'Template'}
+          >
+            {/* drag pill */}
+            <div className="mx-auto mt-3 mb-1 h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-600" />
             {/* header */}
-            <div className="flex shrink-0 items-center justify-between px-4 pb-3 pt-1">
+            <div className="flex shrink-0 items-center justify-between px-4 pb-3 pt-2">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  {sheetTemplate.category}
+                  {sheetTemplate?.category}
                 </p>
-                <h3 className="text-base font-semibold leading-tight">{sheetTemplate.name}</h3>
+                <Drawer.Title className="text-base font-semibold leading-tight">{sheetTemplate?.name}</Drawer.Title>
               </div>
               <button onClick={closeSheet} className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900">
                 <X className="size-5" />
@@ -691,7 +748,7 @@ export default function GeneratorClient({
             {/* scrollable body */}
             <div className="flex-1 overflow-y-auto border-t border-zinc-100 px-4 py-4 dark:border-zinc-900">
               <div className="space-y-4">
-                {sheetTemplate.type === 'building' && (!selectedBuilding || !selectedRoom) && (
+                {sheetTemplate?.type === 'building' && (!selectedBuilding || !selectedRoom) && (
                   <div className="rounded-lg bg-amber-50 p-3 text-xs font-medium text-amber-700 dark:bg-amber-900/20 dark:text-amber-400">
                     Chọn tòa và phòng ở trên để tự điền thông tin.
                   </div>
@@ -737,22 +794,23 @@ export default function GeneratorClient({
                 {pendingQueueItemId ? 'Xác nhận' : <><Plus className="mr-2 size-4" /> Thêm vào hàng</>}
               </Button>
             </div>
-          </div>
-        </div>
-      )}
+          </Drawer.Content>
+        </Drawer.Portal>
+      </Drawer.Root>
 
       {/* ── Create Template Drawer ── */}
-      {createTplOpen && (
-        <div
-          className="fixed inset-0 z-200 flex items-end justify-center bg-black/50 backdrop-blur-sm"
-          onClick={e => { if (e.target === e.currentTarget) setCreateTplOpen(false) }}
-        >
-          <div className="flex max-h-[92dvh] w-full max-w-130 flex-col rounded-t-2xl bg-white shadow-2xl dark:bg-zinc-950">
-            <div className="flex shrink-0 justify-center pt-3 pb-1">
-              <div className="h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-700" />
-            </div>
-            <div className="flex shrink-0 items-center justify-between px-4 pb-3 pt-1">
-              <h3 className="text-base font-semibold">Tạo template mới</h3>
+      <Drawer.Root open={createTplOpen} onOpenChange={v => { if (!v) setCreateTplOpen(false) }}>
+        <Drawer.Portal>
+          <Drawer.Overlay className="fixed inset-0 z-200 bg-black/40 backdrop-blur-sm" />
+          <Drawer.Content
+            className="fixed bottom-0 left-0 right-0 z-200 flex max-h-[90dvh] flex-col rounded-t-[2rem] bg-white/95 shadow-2xl backdrop-blur-3xl dark:bg-zinc-900/95 max-w-130 mx-auto"
+            aria-label="Tạo template mới"
+          >
+            {/* drag pill */}
+            <div className="mx-auto mt-3 mb-1 h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+            {/* header */}
+            <div className="flex shrink-0 items-center justify-between px-4 pb-3 pt-2">
+              <Drawer.Title className="text-base font-semibold">Tạo template mới</Drawer.Title>
               <button onClick={() => setCreateTplOpen(false)} className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900">
                 <X className="size-5" />
               </button>
@@ -785,15 +843,29 @@ export default function GeneratorClient({
                   </datalist>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-semibold">Nội dung</label>
-                  <p className="text-xs text-zinc-400">Dùng <code className="rounded bg-zinc-100 px-1 dark:bg-zinc-800">{'{{tên_biến}}'}</code> cho biến động</p>
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-semibold">Nội dung</label>
+                    <button
+                      type="button"
+                      onClick={() => setTplVarDrawerOpen(true)}
+                      className="flex items-center gap-1 rounded-lg bg-zinc-100 px-2.5 py-1.5 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-200 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    >
+                      <Plus className="size-3.5" /> Chèn biến
+                    </button>
+                  </div>
                   <textarea
+                    ref={tplTextareaRef}
                     value={tplContent}
                     onChange={e => setTplContent(e.target.value)}
-                    placeholder={'Xin chào {{tên_khách}}, chào mừng bạn đến...\n\nMật khẩu wifi: {{wifi_password}}'}
+                    placeholder={'Xin chào {{ten-khach}}, chào mừng bạn đến...\n\nMật khẩu wifi: {{wifi_password}}'}
                     rows={7}
                     className="w-full resize-none rounded-lg border-0 bg-black/5 px-3 py-2.5 text-sm leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
                   />
+                  {tplSyntaxIssues.length > 0 && (
+                    <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600 dark:bg-red-950 dark:text-red-400">
+                      {tplSyntaxIssues.join(' ')}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -807,23 +879,109 @@ export default function GeneratorClient({
                 </Button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </Drawer.Content>
+        </Drawer.Portal>
+      </Drawer.Root>
+
+      {/* ── Variable picker (inside Create Template) ── */}
+      <Drawer.Root open={tplVarDrawerOpen} onOpenChange={v => { if (!v) setTplVarDrawerOpen(false) }}>
+        <Drawer.Portal>
+          <Drawer.Overlay className="fixed inset-0 z-300 bg-black/40 backdrop-blur-sm" />
+          <Drawer.Content
+            className="fixed bottom-0 left-0 right-0 z-300 flex max-h-[80dvh] flex-col rounded-t-[2rem] bg-white/95 shadow-2xl backdrop-blur-3xl dark:bg-zinc-900/95 max-w-130 mx-auto"
+            aria-label="Chèn biến"
+          >
+            {/* drag pill */}
+            <div className="mx-auto mt-3 mb-1 h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+            {/* header */}
+            <div className="shrink-0 flex items-center justify-between px-4 pt-2 pb-3">
+              <Drawer.Title className="font-semibold">Chèn biến</Drawer.Title>
+              <button
+                onClick={() => setTplVarDrawerOpen(false)}
+                className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto border-t border-zinc-100 px-4 py-4 dark:border-zinc-900 space-y-4">
+              {/* Biến thường dùng */}
+              <div className="space-y-2">
+                <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Biến thường dùng</p>
+                <div className="flex flex-wrap gap-2">
+                  {MANUAL_VARIABLE_SUGGESTIONS.map(v => (
+                    <button
+                      key={v.key}
+                      type="button"
+                      onClick={() => insertTplVariable(v.key)}
+                      title={v.description}
+                      className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium transition-colors hover:border-zinc-300 hover:bg-zinc-50 active:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700 dark:hover:bg-zinc-800"
+                    >
+                      {`{{${v.key}}}`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="border-t border-zinc-100 dark:border-zinc-900" />
+
+              {/* Biến tùy chỉnh */}
+              <div className="space-y-2">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Biến tùy chỉnh</p>
+                  <p className="mt-0.5 text-xs text-zinc-500">
+                    Gõ tên rồi bấm thêm. VD: <code className="font-mono">ten-wifi</code> → <code className="font-mono">{`{{ten-wifi}}`}</code>
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    value={tplCustomVarInput}
+                    onChange={e => setTplCustomVarInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); insertTplCustomVar() } }}
+                    placeholder="ten-bien-tuy-chinh"
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    onClick={insertTplCustomVar}
+                    disabled={!tplCustomVarInput || !/^[a-z]/.test(tplCustomVarInput)}
+                    className="shrink-0"
+                  >
+                    <Plus className="size-4" />
+                  </Button>
+                </div>
+                {tplCustomVarInput && /^[a-z]/.test(tplCustomVarInput) && (
+                  <p className="text-xs text-zinc-500">
+                    Sẽ chèn: <code className="rounded bg-zinc-100 px-1 font-mono dark:bg-zinc-900">{`{{${tplCustomVarInput}}}`}</code>
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="shrink-0 border-t border-zinc-100 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-zinc-900">
+              <Button className="h-11 w-full rounded-xl" onClick={() => setTplVarDrawerOpen(false)}>
+                Xong
+              </Button>
+            </div>
+          </Drawer.Content>
+        </Drawer.Portal>
+      </Drawer.Root>
 
       {/* ── Flow Editor Modal ── */}
-      {flowModalOpen && (
-        <div className="fixed inset-0 z-200 flex items-end justify-center bg-black/50 backdrop-blur-sm">
-          <div className="flex max-h-[92dvh] w-full max-w-130 flex-col rounded-t-2xl bg-white shadow-2xl dark:bg-zinc-950">
-            {/* pill */}
-            <div className="flex shrink-0 justify-center pt-3 pb-1">
-              <div className="h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-700" />
-            </div>
+      <Drawer.Root open={flowModalOpen} onOpenChange={v => { if (!v) setFlowModalOpen(false) }}>
+        <Drawer.Portal>
+          <Drawer.Overlay className="fixed inset-0 z-200 bg-black/40 backdrop-blur-sm" />
+          <Drawer.Content
+            className="fixed bottom-0 left-0 right-0 z-200 flex max-h-[90dvh] flex-col rounded-t-[2rem] bg-white/95 shadow-2xl backdrop-blur-3xl dark:bg-zinc-900/95 max-w-130 mx-auto"
+            aria-label={editingFlow ? 'Chỉnh sửa luồng' : 'Tạo luồng mới'}
+          >
+            {/* drag pill */}
+            <div className="mx-auto mt-3 mb-1 h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-600" />
             {/* header */}
-            <div className="flex shrink-0 items-center justify-between px-4 pb-3 pt-1">
-              <h3 className="text-base font-semibold">
+            <div className="flex shrink-0 items-center justify-between px-4 pb-3 pt-2">
+              <Drawer.Title className="text-base font-semibold">
                 {editingFlow ? 'Chỉnh sửa luồng' : 'Tạo luồng mới'}
-              </h3>
+              </Drawer.Title>
               <button onClick={() => setFlowModalOpen(false)} className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900">
                 <X className="size-5" />
               </button>
@@ -950,9 +1108,9 @@ export default function GeneratorClient({
                 </Button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </Drawer.Content>
+        </Drawer.Portal>
+      </Drawer.Root>
     </div>
   )
 }

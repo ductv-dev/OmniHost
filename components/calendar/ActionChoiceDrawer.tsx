@@ -1,7 +1,7 @@
 'use client'
 
 import { Drawer } from 'vaul'
-import { CalendarPlus, Lock } from 'lucide-react'
+import { Banknote, CalendarPlus, Lock } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { format, parseISO } from 'date-fns'
 
@@ -12,6 +12,7 @@ interface ActionChoiceDrawerProps {
   date: string
   onBook: () => void
   onBlock: () => void
+  onSetRate: () => void
 }
 
 export default function ActionChoiceDrawer({
@@ -21,6 +22,7 @@ export default function ActionChoiceDrawer({
   date,
   onBook,
   onBlock,
+  onSetRate,
 }: ActionChoiceDrawerProps) {
   return (
     <Drawer.Root open={open} onOpenChange={onOpenChange}>
@@ -39,25 +41,35 @@ export default function ActionChoiceDrawer({
               {format(parseISO(date), 'EEEE, dd/MM/yyyy')}
             </p>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                 onClick={onBook}
-                className="flex flex-col items-center gap-3 rounded-2xl bg-zinc-950 px-4 py-5 text-white dark:bg-white dark:text-zinc-950"
+                className="flex flex-col items-center gap-3 rounded-2xl bg-zinc-950 px-3 py-5 text-white dark:bg-white dark:text-zinc-950"
               >
                 <CalendarPlus className="size-6" />
-                <span className="text-sm font-bold">Đặt phòng</span>
+                <span className="text-xs font-bold">Đặt phòng</span>
               </motion.button>
 
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                 onClick={onBlock}
-                className="flex flex-col items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-5 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+                className="flex flex-col items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-5 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
               >
                 <Lock className="size-6" />
-                <span className="text-sm font-bold">Khóa phòng</span>
+                <span className="text-xs font-bold">Khóa phòng</span>
+              </motion.button>
+
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                onClick={onSetRate}
+                className="flex flex-col items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-5 text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-400"
+              >
+                <Banknote className="size-6" />
+                <span className="text-xs font-bold">Đặt giá</span>
               </motion.button>
             </div>
           </div>

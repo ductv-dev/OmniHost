@@ -13,7 +13,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { createBooking } from '@/app/dashboard/bookings/actions'
-import type { BuildingForBooking, RoomForBooking } from '@/types/booking'
+import SourceIcon from '@/components/booking/SourceIcon'
+import type { BookingSource, BuildingForBooking, RoomForBooking } from '@/types/booking'
 
 const formSchema = z
   .object({
@@ -82,6 +83,7 @@ export default function BookingForm({ buildings }: Props) {
   })
 
   const watchBuildingId = watch('building_id')
+  const watchSource = watch('source')
   const watchRoomId = watch('room_id')
   const watchCheckIn = watch('check_in')
   const watchCheckOut = watch('check_out')
@@ -317,12 +319,18 @@ export default function BookingForm({ buildings }: Props) {
               onValueChange={(v) => setValue('source', v as FormValues['source'])}
             >
               <SelectTrigger className="h-12 rounded-2xl">
-                <SelectValue />
+                <span className="flex items-center gap-2">
+                  <SourceIcon source={watchSource as BookingSource} size={14} />
+                  <SelectValue />
+                </span>
               </SelectTrigger>
               <SelectContent>
                 {SOURCE_OPTIONS.map((o) => (
                   <SelectItem key={o.value} value={o.value}>
-                    {o.label}
+                    <span className="flex items-center gap-2">
+                      <SourceIcon source={o.value as BookingSource} size={14} />
+                      {o.label}
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>

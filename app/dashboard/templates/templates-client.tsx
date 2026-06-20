@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from 'react'
 import { ChevronDown, Edit2, Plus, Trash2, X } from 'lucide-react'
+import { Drawer } from 'vaul'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -35,6 +36,7 @@ export default function TemplatesClient({
   const [templates, setTemplates] = useState(initialTemplates)
   const [editingTemplate, setEditingTemplate] = useState<Tables<'common_templates'> | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -136,7 +138,6 @@ export default function TemplatesClient({
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Xóa template này?')) return
     setIsLoading(true)
     const result = await deleteCommonTemplate(id)
     if ('error' in result) {
@@ -145,6 +146,7 @@ export default function TemplatesClient({
       return
     }
     setTemplates(prev => prev.filter(t => t.id !== id))
+    setConfirmDeleteId(null)
     setIsLoading(false)
   }
 
@@ -170,20 +172,40 @@ export default function TemplatesClient({
                   key={template.id}
                   className="group relative transition-colors hover:border-zinc-300 dark:hover:border-zinc-700"
                 >
-                  <div className="absolute right-3 top-3 flex gap-1">
-                    <button
-                      onClick={() => handleOpenModal(template)}
-                      className="rounded-lg bg-zinc-100 p-2 text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-zinc-950 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
-                    >
-                      <Edit2 className="size-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(template.id)}
-                      disabled={isLoading}
-                      className="rounded-lg bg-red-500/10 p-2 text-red-500 transition-colors hover:bg-red-500/20 disabled:opacity-50"
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
+                  <div className="absolute right-3 top-3 flex items-center gap-1">
+                    {confirmDeleteId !== template.id && (
+                      <button
+                        onClick={() => handleOpenModal(template)}
+                        className="rounded-lg bg-zinc-100 p-2 text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-zinc-950 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+                      >
+                        <Edit2 className="size-4" />
+                      </button>
+                    )}
+                    {confirmDeleteId === template.id ? (
+                      <>
+                        <button
+                          onClick={() => setConfirmDeleteId(null)}
+                          className="flex h-8 items-center rounded-lg bg-zinc-100 px-2.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                        >
+                          Hủy
+                        </button>
+                        <button
+                          onClick={() => handleDelete(template.id)}
+                          disabled={isLoading}
+                          className="flex h-8 items-center rounded-lg bg-red-500 px-2.5 text-xs font-semibold text-white disabled:opacity-50"
+                        >
+                          Xóa
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmDeleteId(template.id)}
+                        disabled={isLoading}
+                        className="rounded-lg bg-red-500/10 p-2 text-red-500 transition-colors hover:bg-red-500/20 disabled:opacity-50"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    )}
                   </div>
                   <CardHeader className="p-4 pb-2 pr-24">
                     <CardTitle className="text-base">{template.name}</CardTitle>
@@ -207,15 +229,19 @@ export default function TemplatesClient({
       )}
 
       {/* Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-200 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-4">
-          <div className="flex max-h-[92dvh] w-full max-w-130 flex-col rounded-t-2xl bg-white shadow-2xl dark:bg-zinc-950 sm:rounded-xl">
+      <Drawer.Root open={isModalOpen} onOpenChange={v => { if (!v) setIsModalOpen(false) }}>
+        <Drawer.Portal>
+          <Drawer.Overlay className="fixed inset-0 z-200 bg-black/40 backdrop-blur-sm" />
+          <Drawer.Content
+            className="fixed bottom-0 left-0 right-0 z-200 flex max-h-[90dvh] flex-col rounded-t-[2rem] bg-white/95 shadow-2xl backdrop-blur-3xl dark:bg-zinc-900/95 max-w-130 mx-auto"
+            aria-label={editingTemplate ? 'Sửa template' : 'Template mới'}
+          >
             {/* header */}
             <div className="shrink-0 px-4 pt-3 pb-3">
-              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-zinc-200 dark:bg-zinc-800 sm:hidden" />
-              <h2 className="text-lg font-semibold">
+              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-zinc-200 dark:bg-zinc-800" />
+              <Drawer.Title className="text-lg font-semibold">
                 {editingTemplate ? 'Sửa template' : 'Template mới'}
-              </h2>
+              </Drawer.Title>
             </div>
 
             {/* scrollable body */}
@@ -347,21 +373,23 @@ export default function TemplatesClient({
                 {isLoading ? 'Đang lưu...' : 'Lưu template'}
               </Button>
             </div>
-          </div>
-        </div>
-      )}
+          </Drawer.Content>
+        </Drawer.Portal>
+      </Drawer.Root>
 
       {/* Variable Drawer (on top of modal) */}
-      {drawerOpen && (
-        <div className="fixed inset-0 z-300 flex items-end">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setDrawerOpen(false)}
-          />
-          <div className="relative z-10 flex max-h-[80dvh] w-full flex-col rounded-t-2xl bg-white shadow-2xl dark:bg-zinc-950">
+      <Drawer.Root open={drawerOpen} onOpenChange={v => { if (!v) setDrawerOpen(false) }}>
+        <Drawer.Portal>
+          <Drawer.Overlay className="fixed inset-0 z-300 bg-black/40 backdrop-blur-sm" />
+          <Drawer.Content
+            className="fixed bottom-0 left-0 right-0 z-300 flex max-h-[80dvh] flex-col rounded-t-[2rem] bg-white/95 shadow-2xl backdrop-blur-3xl dark:bg-zinc-900/95 max-w-130 mx-auto"
+            aria-label="Chèn biến"
+          >
+            {/* drag pill */}
+            <div className="mx-auto mt-3 mb-1 h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-600" />
             {/* header */}
-            <div className="shrink-0 flex items-center justify-between px-4 pt-4 pb-3">
-              <h3 className="font-semibold">Chèn biến</h3>
+            <div className="shrink-0 flex items-center justify-between px-4 pt-2 pb-3">
+              <Drawer.Title className="font-semibold">Chèn biến</Drawer.Title>
               <button
                 onClick={() => setDrawerOpen(false)}
                 className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900"
@@ -439,9 +467,9 @@ export default function TemplatesClient({
                 Xong
               </Button>
             </div>
-          </div>
-        </div>
-      )}
+          </Drawer.Content>
+        </Drawer.Portal>
+      </Drawer.Root>
     </div>
   )
 }

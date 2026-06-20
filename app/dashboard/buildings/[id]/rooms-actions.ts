@@ -115,7 +115,20 @@ export async function deleteRoom(id: string) {
   return { success: true }
 }
 
-export async function createBulkRooms(buildingId: string, roomsData: { room_number: string; floor: number; default_price?: number }[]) {
+export async function createBulkRooms(
+  buildingId: string,
+  roomsData: {
+    room_number: string
+    floor: number
+    default_price?: number
+    wifi_name?: string
+    wifi_password?: string
+    lockbox_password?: string
+    washing_machine_floor?: number
+    dryer_floor?: number
+    room_note?: string
+  }[]
+) {
   if (!roomsData || roomsData.length === 0) return { error: 'No rooms provided' }
   const supabase = await createClient()
 
@@ -124,6 +137,12 @@ export async function createBulkRooms(buildingId: string, roomsData: { room_numb
     room_number: r.room_number,
     floor: r.floor,
     default_price: r.default_price ?? 0,
+    wifi_name: r.wifi_name || null,
+    wifi_password: r.wifi_password || null,
+    lockbox_password: r.lockbox_password || null,
+    washing_machine_floor: r.washing_machine_floor ?? null,
+    dryer_floor: r.dryer_floor ?? null,
+    room_note: r.room_note || null,
   }))
 
   const { error } = await supabase.from('rooms').insert(insertPayload)

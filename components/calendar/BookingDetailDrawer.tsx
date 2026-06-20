@@ -5,6 +5,8 @@ import { Drawer } from 'vaul'
 import { X, Pencil, Trash2, ChevronDown } from 'lucide-react'
 import { differenceInDays, parseISO, format } from 'date-fns'
 import { deleteBooking, updateBookingStatus } from '@/app/dashboard/bookings/actions'
+import SourceIcon from '@/components/booking/SourceIcon'
+import type { BookingSource } from '@/types/booking'
 import type { CalBooking, CalRoom } from './TimelineCalendar'
 
 const STATUS_LABELS: Record<string, string> = {
@@ -97,8 +99,11 @@ export default function BookingDetailDrawer({
                 <Drawer.Title className="text-lg font-bold text-zinc-950 dark:text-white">
                   {booking.guest?.full_name ?? 'Khách'}
                 </Drawer.Title>
-                <p className="mt-0.5 text-sm text-zinc-500">
-                  {room.room_number} · {SOURCE_LABELS[booking.source] ?? booking.source}
+                <p className="mt-0.5 flex items-center gap-1.5 text-sm text-zinc-500">
+                  {room.room_number}
+                  <span className="opacity-40">·</span>
+                  <SourceIcon source={booking.source as BookingSource} size={13} />
+                  {SOURCE_LABELS[booking.source] ?? booking.source}
                 </p>
               </div>
               <button

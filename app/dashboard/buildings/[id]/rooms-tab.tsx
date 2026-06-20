@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Plus, Edit2, Trash2 } from 'lucide-react'
+import { Drawer } from 'vaul'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -20,6 +21,7 @@ export default function RoomsTab({
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingRoom, setEditingRoom] = useState<Tables<'rooms'> | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const [roomNumber, setRoomNumber] = useState('')
@@ -33,17 +35,32 @@ export default function RoomsTab({
   const [roomNote, setRoomNote] = useState('')
   
   const [activeTab, setActiveTab] = useState<'single' | 'bulk'>('single')
-  const [bulkRoomsText, setBulkRoomsText] = useState('')
 
-  const inferFloor = (roomStr: string): number => {
-    const numMatch = roomStr.match(/\d+/)
-    if (!numMatch) return 1
-    const num = numMatch[0]
-    if (num.length >= 3) {
-      return parseInt(num.slice(0, -2), 10) || 1
+  // bulk generator state
+  const [bulkPrefix, setBulkPrefix] = useState('')
+  const [bulkStartFloor, setBulkStartFloor] = useState(1)
+  const [bulkNumFloors, setBulkNumFloors] = useState(1)
+  const [bulkRoomsPerFloor, setBulkRoomsPerFloor] = useState(10)
+  const [bulkDefaultPrice, setBulkDefaultPrice] = useState('')
+  const [bulkLockboxPassword, setBulkLockboxPassword] = useState('')
+  const [bulkWifiPassword, setBulkWifiPassword] = useState('')
+  const [bulkWashingMachineFloor, setBulkWashingMachineFloor] = useState('')
+  const [bulkDryerFloor, setBulkDryerFloor] = useState('')
+  const [bulkRoomNote, setBulkRoomNote] = useState('')
+
+  const bulkPreview = useMemo(() => {
+    const sf = Math.max(1, bulkStartFloor)
+    const nf = Math.min(50, Math.max(1, bulkNumFloors))
+    const rpf = Math.min(50, Math.max(1, bulkRoomsPerFloor))
+    const rooms: { room_number: string; floor: number; wifi_name: string }[] = []
+    for (let f = sf; f < sf + nf; f++) {
+      for (let r = 1; r <= rpf; r++) {
+        const rn = `${f}${String(r).padStart(2, '0')}`
+        rooms.push({ floor: f, room_number: rn, wifi_name: bulkPrefix ? `${bulkPrefix}${rn}` : rn })
+      }
     }
-    return 1
-  }
+    return rooms
+  }, [bulkPrefix, bulkStartFloor, bulkNumFloors, bulkRoomsPerFloor])
 
   const handleOpenModal = (room?: Tables<'rooms'>) => {
     if (room) {
@@ -71,8 +88,24 @@ export default function RoomsTab({
     }
     setError(null)
     setActiveTab('single')
-    setBulkRoomsText('')
+    setBulkPrefix('')
+    setBulkStartFloor(1)
+    setBulkNumFloors(1)
+    setBulkRoomsPerFloor(10)
+    setBulkDefaultPrice('')
+    setBulkLockboxPassword('')
+    setBulkWifiPassword('')
+    setBulkWashingMachineFloor('')
+    setBulkDryerFloor('')
+    setBulkRoomNote('')
     setIsModalOpen(true)
+  }
+
+  const inferFloor = (roomStr: string): number => {
+    const numMatch = roomStr.match(/\d+/)
+    if (!numMatch) return 1
+    const num = numMatch[0]
+    return num.length >= 3 ? parseInt(num.slice(0, -2), 10) || 1 : 1
   }
 
   const handleSave = async () => {
@@ -108,15 +141,20 @@ export default function RoomsTab({
   }
 
   const handleBulkSave = async () => {
-    if (!bulkRoomsText.trim()) return setError('Vui lòng nhập danh sách phòng')
+    if (bulkPreview.length === 0) return setError('Chưa có phòng nào được tạo')
     setIsLoading(true)
     setError(null)
 
-    const rawRooms = bulkRoomsText.split(/[\n,;]+/).map(r => r.trim()).filter(Boolean)
-    const roomsData = rawRooms.map(r => ({
-      room_number: r,
-      floor: inferFloor(r),
-      default_price: defaultPrice ? Number(defaultPrice) : 0,
+    const roomsData = bulkPreview.map(r => ({
+      room_number: r.room_number,
+      floor: r.floor,
+      default_price: bulkDefaultPrice ? Number(bulkDefaultPrice) : 0,
+      wifi_name: r.wifi_name,
+      wifi_password: bulkWifiPassword || undefined,
+      lockbox_password: bulkLockboxPassword || undefined,
+      washing_machine_floor: bulkWashingMachineFloor ? Number(bulkWashingMachineFloor) : undefined,
+      dryer_floor: bulkDryerFloor ? Number(bulkDryerFloor) : undefined,
+      room_note: bulkRoomNote || undefined,
     }))
 
     const result = await createBulkRooms(buildingId, roomsData)
@@ -129,7 +167,7 @@ export default function RoomsTab({
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this room?')) return
+    setConfirmDeleteId(null)
     setIsLoading(true)
     await deleteRoom(id)
     window.location.reload()
@@ -150,19 +188,38 @@ export default function RoomsTab({
             key={room.id}
             className="group relative transition-colors hover:border-zinc-300 dark:hover:border-zinc-700"
           >
-            <div className="absolute right-3 top-3 flex gap-1">
-              <button
-                onClick={() => handleOpenModal(room)}
-                className="rounded-lg bg-zinc-100 p-2 text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-zinc-950 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
-              >
-                <Edit2 className="size-4" />
-              </button>
-              <button
-                onClick={() => handleDelete(room.id)}
-                className="rounded-lg bg-red-500/10 p-2 text-red-500 transition-colors hover:bg-red-500/20"
-              >
-                <Trash2 className="size-4" />
-              </button>
+            <div className="absolute right-3 top-3 flex items-center gap-1">
+              {confirmDeleteId !== room.id && (
+                <button
+                  onClick={() => handleOpenModal(room)}
+                  className="rounded-lg bg-zinc-100 p-2 text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-zinc-950 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+                >
+                  <Edit2 className="size-4" />
+                </button>
+              )}
+              {confirmDeleteId === room.id ? (
+                <>
+                  <button
+                    onClick={() => setConfirmDeleteId(null)}
+                    className="flex h-8 items-center rounded-lg bg-zinc-100 px-2.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    onClick={() => handleDelete(room.id)}
+                    className="flex h-8 items-center rounded-lg bg-red-500 px-2.5 text-xs font-semibold text-white"
+                  >
+                    Xóa
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setConfirmDeleteId(room.id)}
+                  className="rounded-lg bg-red-500/10 p-2 text-red-500 transition-colors hover:bg-red-500/20"
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              )}
             </div>
             <CardHeader className="p-4 pb-3 pr-24">
               <CardTitle className="text-2xl">{room.room_number}</CardTitle>
@@ -189,15 +246,19 @@ export default function RoomsTab({
         </div>
       )}
 
-      {isModalOpen && (
-        <div className="fixed inset-0 z-200 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-4">
-          <div className="flex max-h-[92dvh] w-full max-w-130 flex-col rounded-t-2xl bg-white shadow-2xl dark:bg-zinc-950 sm:rounded-xl">
+      <Drawer.Root open={isModalOpen} onOpenChange={v => { if (!v) setIsModalOpen(false) }}>
+        <Drawer.Portal>
+          <Drawer.Overlay className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-sm" />
+          <Drawer.Content
+            className="fixed bottom-0 left-0 right-0 z-[200] flex max-h-[90dvh] flex-col rounded-t-[2rem] bg-white/95 shadow-2xl backdrop-blur-3xl dark:bg-zinc-900/95 max-w-130 mx-auto"
+            aria-label={editingRoom ? 'Sửa phòng' : 'Thêm phòng'}
+          >
             {/* header */}
             <div className="shrink-0 px-4 pt-3 pb-3">
-              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-zinc-200 dark:bg-zinc-800 sm:hidden" />
-              <h2 className="text-lg font-semibold">
+              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-zinc-200 dark:bg-zinc-800" />
+              <Drawer.Title className="text-lg font-semibold">
                 {editingRoom ? 'Sửa phòng' : 'Thêm phòng'}
-              </h2>
+              </Drawer.Title>
             </div>
 
             {/* scrollable body */}
@@ -314,27 +375,136 @@ export default function RoomsTab({
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Danh sách phòng</Label>
-                    <textarea
-                      value={bulkRoomsText}
-                      onChange={e => setBulkRoomsText(e.target.value)}
-                      placeholder="Nhập các phòng cách nhau bằng dấu phẩy hoặc xuống dòng.&#10;VD:&#10;101, 102&#10;201, 202"
-                      className="flex min-h-32 w-full rounded-lg border-0 bg-black/5 px-4 py-3 text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
+                  {/* Prefix */}
+                  <div className="space-y-1.5">
+                    <Label>Tiền tố</Label>
+                    <p className="text-[11px] text-zinc-500">Tên phòng và Wi-Fi = tiền tố + số phòng. VD: tiền tố <strong>NM</strong> → phòng <strong>101</strong>, Wi-Fi <strong>NM101</strong></p>
+                    <Input
+                      value={bulkPrefix}
+                      onChange={e => setBulkPrefix(e.target.value)}
+                      placeholder="VD: NM"
                     />
-                    <p className="text-[11px] text-zinc-500">
-                      Tầng sẽ được tự động suy ra từ số phòng (VD: 101 → Tầng 1, 1405 → Tầng 14). Mật khẩu hộp khóa và Wi-Fi có thể cập nhật sau.
-                    </p>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Giá phòng mặc định chung (đ/đêm)</Label>
+
+                  {/* Floor layout */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>Tầng bắt đầu</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={bulkStartFloor}
+                        onChange={e => setBulkStartFloor(Number(e.target.value))}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Số tầng</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={50}
+                        value={bulkNumFloors}
+                        onChange={e => setBulkNumFloors(Number(e.target.value))}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Phòng/tầng</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={50}
+                        value={bulkRoomsPerFloor}
+                        onChange={e => setBulkRoomsPerFloor(Number(e.target.value))}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Price */}
+                  <div className="space-y-1.5">
+                    <Label>Giá mặc định (đ/đêm) — tất cả phòng</Label>
                     <Input
                       type="number"
-                      value={defaultPrice}
-                      onChange={e => setDefaultPrice(e.target.value)}
-                      placeholder="Tùy chọn: Nhập giá chung cho tất cả"
+                      value={bulkDefaultPrice}
+                      onChange={e => setBulkDefaultPrice(e.target.value)}
+                      placeholder="VD: 500000"
                     />
                   </div>
+
+                  {/* Lockbox + Wifi */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>Mã hộp khóa — tất cả</Label>
+                      <Input
+                        value={bulkLockboxPassword}
+                        onChange={e => setBulkLockboxPassword(e.target.value)}
+                        placeholder="VD: 1234"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Mật khẩu Wi-Fi — tất cả</Label>
+                      <Input
+                        value={bulkWifiPassword}
+                        onChange={e => setBulkWifiPassword(e.target.value)}
+                        placeholder="VD: 88888888"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Washer / Dryer */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>Tầng máy giặt</Label>
+                      <Input
+                        type="number"
+                        value={bulkWashingMachineFloor}
+                        onChange={e => setBulkWashingMachineFloor(e.target.value)}
+                        placeholder="5"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Tầng máy sấy</Label>
+                      <Input
+                        type="number"
+                        value={bulkDryerFloor}
+                        onChange={e => setBulkDryerFloor(e.target.value)}
+                        placeholder="5"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Note */}
+                  <div className="space-y-1.5">
+                    <Label>Ghi chú — tất cả phòng</Label>
+                    <textarea
+                      value={bulkRoomNote}
+                      onChange={e => setBulkRoomNote(e.target.value)}
+                      placeholder="Ghi chú áp dụng cho tất cả phòng..."
+                      className="flex min-h-20 w-full rounded-lg border-0 bg-black/5 px-4 py-3 text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:bg-white/10"
+                    />
+                  </div>
+
+                  {/* Preview */}
+                  {bulkPreview.length > 0 && (
+                    <div className="rounded-xl bg-zinc-100 p-3 dark:bg-zinc-900">
+                      <p className="mb-2 text-xs font-semibold text-zinc-500">
+                        Xem trước — {bulkPreview.length} phòng
+                      </p>
+                      <div className="max-h-40 overflow-y-auto">
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {bulkPreview.map(r => (
+                            <div
+                              key={r.room_number}
+                              className="flex items-center justify-between rounded-lg bg-white px-2.5 py-1.5 text-xs dark:bg-zinc-800"
+                            >
+                              <span className="font-mono font-bold">{r.room_number}</span>
+                              <span className="text-zinc-400">{r.wifi_name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {error && <p className="text-sm text-red-500">{error}</p>}
                 </div>
               )}
@@ -350,12 +520,16 @@ export default function RoomsTab({
                 Hủy
               </Button>
               <Button onClick={handleSave} className="h-12 rounded-xl" disabled={isLoading}>
-                {isLoading ? 'Đang lưu...' : 'Lưu phòng'}
+                {isLoading
+                  ? 'Đang lưu...'
+                  : activeTab === 'bulk'
+                  ? `Tạo ${bulkPreview.length} phòng`
+                  : 'Lưu phòng'}
               </Button>
             </div>
-          </div>
-        </div>
-      )}
+          </Drawer.Content>
+        </Drawer.Portal>
+      </Drawer.Root>
     </div>
   )
 }

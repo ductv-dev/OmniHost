@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
+import { eachDayOfInterval, format, parseISO } from 'date-fns'
 
 const bookingSchema = z.object({
   building_id: z.string().uuid('Chọn tòa nhà'),
@@ -234,6 +235,57 @@ export async function createRoomBlock(input: {
 export async function deleteRoomBlock(id: string): Promise<{ success: true } | { error: string }> {
   const supabase = await createClient()
   const { error } = await supabase.from('room_blocks').delete().eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/dashboard/calendar')
+  return { success: true }
+}
+
+// ── Room Rates ──────────────────────────────────────────────────────────────
+
+export async function upsertRoomRates(input: {
+  roomIds: string[]
+  startDate: string
+  endDate: string
+  price: number
+}): Promise<{ success: true } | { error: string }> {
+  const supabase = await createClient()
+
+  const dates = eachDayOfInterval({
+    start: parseISO(input.startDate),
+    end: parseISO(input.endDate),
+  }).map((d) => format(d, 'yyyy-MM-dd'))
+
+  const rows = input.roomIds.flatMap((roomId) =>
+    dates.map((date) => ({ room_id: roomId, date, price: input.price }))
+  )
+
+  const { error } = await supabase
+    .from('room_rates')
+    .upsert(rows, { onConflict: 'room_id,date' })
+
+  if (error) return { error: error.message }
+  revalidatePath('/dashboard/calendar')
+  return { success: true }
+}
+
+export async function deleteRoomRates(input: {
+  roomIds: string[]
+  startDate: string
+  endDate: string
+}): Promise<{ success: true } | { error: string }> {
+  const supabase = await createClient()
+
+  const dates = eachDayOfInterval({
+    start: parseISO(input.startDate),
+    end: parseISO(input.endDate),
+  }).map((d) => format(d, 'yyyy-MM-dd'))
+
+  const { error } = await supabase
+    .from('room_rates')
+    .delete()
+    .in('room_id', input.roomIds)
+    .in('date', dates)
+
   if (error) return { error: error.message }
   revalidatePath('/dashboard/calendar')
   return { success: true }

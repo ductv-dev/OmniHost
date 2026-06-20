@@ -1,5 +1,7 @@
 "use client"
 
+import SourceIcon from "@/components/booking/SourceIcon"
+import type { BookingSource } from "@/types/booking"
 import {
   differenceInDays,
   eachDayOfInterval,
@@ -42,10 +44,18 @@ export interface CalBlock {
   reason: string | null
 }
 
+export interface CalRate {
+  id: string
+  room_id: string
+  date: string
+  price: number
+}
+
 interface TimelineCalendarProps {
   rooms: CalRoom[]
   bookings: CalBooking[]
   blocks: CalBlock[]
+  rates: CalRate[]
   viewStart: Date
   viewEnd: Date
   onBookingClick: (booking: CalBooking) => void
@@ -61,6 +71,15 @@ const PAD_RIGHT = "48px"
 const ROOM_COL_WIDTH = 72
 const ROW_HEIGHT = 56
 const HEADER_HEIGHT = 48
+
+function formatPrice(n: number): string {
+  if (n <= 0) return ""
+  if (n >= 1_000_000) {
+    const m = n / 1_000_000
+    return m % 1 === 0 ? `${m}tr` : `${m.toFixed(1)}tr`
+  }
+  return `${Math.round(n / 1_000)}k`
+}
 
 const STATUS_COLORS: Record<string, string> = {
   confirmed: "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950",
@@ -120,6 +139,7 @@ export default function TimelineCalendar({
   rooms,
   bookings,
   blocks,
+  rates,
   viewStart,
   viewEnd,
   onBookingClick,
@@ -129,9 +149,15 @@ export default function TimelineCalendar({
   const days = eachDayOfInterval({ start: viewStart, end: viewEnd })
   const gridTemplateColumns = `${ROOM_COL_WIDTH}px repeat(${days.length}, ${DAY_WIDTH}px)`
 
+  const rateMap = React.useMemo(() => {
+    const m = new Map<string, number>()
+    rates.forEach((r) => m.set(`${r.room_id}_${r.date}`, r.price))
+    return m
+  }, [rates])
+
   return (
     <div className="w-full">
-      <div className="max-h-[calc(100dvh-300px)] [scrollbar-width:none] overflow-auto overscroll-contain md:max-h-[calc(100dvh-240px)] [&::-webkit-scrollbar]:hidden">
+      <div className="max-h-[calc(100dvh-340px-env(safe-area-inset-top,0px))] overflow-auto overscroll-contain scrollbar-none md:max-h-[calc(100dvh-260px)]">
         <div
           style={{ display: "grid", gridTemplateColumns }}
           className="relative min-w-max"
@@ -223,26 +249,43 @@ export default function TimelineCalendar({
                 </div>
 
                 {/* Day cells — clickable when empty */}
-                {days.map((day, dayIdx) => (
-                  <div
-                    key={`cell-${room.id}-${dayIdx}`}
-                    style={{
-                      gridRow,
-                      gridColumn: dayIdx + 2,
-                      height: ROW_HEIGHT,
-                    }}
-                    className={`cursor-pointer border-r border-b border-black/5 transition-colors hover:bg-zinc-100/50 dark:border-white/5 dark:hover:bg-zinc-800/50 ${
-                      isToday(day)
-                        ? "bg-zinc-950/5 dark:bg-white/5"
-                        : isWeekend(day)
-                          ? "bg-rose-50/20 dark:bg-rose-950/10"
-                          : ""
-                    }`}
-                    onClick={() =>
-                      onEmptyCellClick(room.id, format(day, "yyyy-MM-dd"))
-                    }
-                  />
-                ))}
+                {days.map((day, dayIdx) => {
+                  const dayStr = format(day, "yyyy-MM-dd")
+                  const customRate = rateMap.get(`${room.id}_${dayStr}`)
+                  const price = customRate ?? room.default_price
+                  const isCustomRate = customRate !== undefined
+                  const priceStr = formatPrice(price)
+                  return (
+                    <div
+                      key={`cell-${room.id}-${dayIdx}`}
+                      style={{
+                        gridRow,
+                        gridColumn: dayIdx + 2,
+                        height: ROW_HEIGHT,
+                      }}
+                      className={`relative cursor-pointer border-r border-b border-black/5 transition-colors hover:bg-zinc-100/50 dark:border-white/5 dark:hover:bg-zinc-800/50 ${
+                        isToday(day)
+                          ? "bg-zinc-950/5 dark:bg-white/5"
+                          : isWeekend(day)
+                            ? "bg-rose-50/20 dark:bg-rose-950/10"
+                            : ""
+                      }`}
+                      onClick={() => onEmptyCellClick(room.id, dayStr)}
+                    >
+                      {priceStr && (
+                        <span
+                          className={`pointer-events-none absolute inset-x-0 bottom-1 text-center text-[9px] font-medium leading-none ${
+                            isCustomRate
+                              ? "text-amber-500 dark:text-amber-400"
+                              : "text-zinc-400/60 dark:text-zinc-500/60"
+                          }`}
+                        >
+                          {priceStr}
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
 
                 {/* Block pills */}
                 {roomBlocks.map((block) => {
@@ -349,12 +392,22 @@ export default function TimelineCalendar({
                           damping: 25,
                         }}
                         onClick={() => onBookingClick(booking)}
-                        className={`flex h-full w-full cursor-pointer items-center truncate rounded-2xl px-2.5 shadow-lg ${colorClass}`}
+                        className={`flex h-full w-full cursor-pointer items-center overflow-clip rounded-2xl px-2.5 shadow-lg ${colorClass}`}
                         style={{ pointerEvents: "auto" }}
                       >
-                        <span className="truncate text-[11px] font-semibold">
-                          {booking.guest?.full_name ?? "—"}
-                        </span>
+                        <div
+                          className="flex items-center gap-1 whitespace-nowrap"
+                          style={{ position: "sticky", left: ROOM_COL_WIDTH + 8 }}
+                        >
+                          <SourceIcon
+                            source={booking.source as BookingSource}
+                            size={11}
+                            mono
+                          />
+                          <span className="text-[11px] font-semibold">
+                            {booking.guest?.full_name ?? "—"}
+                          </span>
+                        </div>
                       </motion.button>
                     </div>
                   )

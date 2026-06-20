@@ -38,6 +38,7 @@ export default function BuildingsPage() {
   const [motorbikeNote, setMotorbikeNote] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   useEffect(() => {
     const supabase = createClient()
@@ -83,9 +84,9 @@ export default function BuildingsPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Xóa tòa nhà này?')) return
     await deleteBuilding(id)
     setBuildings(prev => prev.filter(b => b.id !== id))
+    setConfirmDeleteId(null)
   }
 
   return (
@@ -125,7 +126,7 @@ export default function BuildingsPage() {
                 key={building.id}
                 className="group relative overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950"
               >
-                <Link href={`/dashboard/buildings/${building.id}`} className="block p-4 pr-14">
+                <Link href={`/dashboard/buildings/${building.id}`} className={`block p-4 ${confirmDeleteId === building.id ? 'pr-30' : 'pr-14'}`}>
                   <h3 className="truncate text-lg font-semibold">{building.name}</h3>
                   <div className="mt-2 flex min-w-0 items-start gap-2 text-sm text-zinc-500">
                     <MapPin className="mt-0.5 size-4 shrink-0" />
@@ -140,12 +141,29 @@ export default function BuildingsPage() {
                   </div>
                 </Link>
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <button
-                    onClick={() => handleDelete(building.id)}
-                    className="flex size-9 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
+                  {confirmDeleteId === building.id ? (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => setConfirmDeleteId(null)}
+                        className="flex h-8 items-center rounded-lg bg-zinc-100 px-2.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                      >
+                        Hủy
+                      </button>
+                      <button
+                        onClick={() => handleDelete(building.id)}
+                        className="flex h-8 items-center rounded-lg bg-red-500 px-2.5 text-xs font-semibold text-white"
+                      >
+                        Xóa
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmDeleteId(building.id)}
+                      className="flex size-9 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             ))

@@ -5,9 +5,11 @@ import ActionChoiceDrawer from "@/components/calendar/ActionChoiceDrawer"
 import BlockRoomDrawer from "@/components/calendar/BlockRoomDrawer"
 import BookingDetailDrawer from "@/components/calendar/BookingDetailDrawer"
 import CreateBookingDrawer from "@/components/calendar/CreateBookingDrawer"
+import SetRateDrawer from "@/components/calendar/SetRateDrawer"
 import TimelineCalendar, {
   type CalBlock,
   type CalBooking,
+  type CalRate,
   type CalRoom,
 } from "@/components/calendar/TimelineCalendar"
 import { Calendar } from "@/components/ui/calendar"
@@ -39,6 +41,7 @@ export default function CalendarPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [detailOpen, setDetailOpen] = useState(false)
   const [blockOpen, setBlockOpen] = useState(false)
+  const [rateOpen, setRateOpen] = useState(false)
 
   const [selectedCell, setSelectedCell] = useState<{
     roomId: string
@@ -72,39 +75,50 @@ export default function CalendarPage() {
             .eq("building_id", selectedId!)
         ).data?.map((r) => r.id) ?? []
 
-      const [roomsResult, bookingsResult, blocksResult] = await Promise.all([
-        supabase
-          .from("rooms")
-          .select("id, room_number, floor, default_price")
-          .eq("building_id", selectedId!)
-          .eq("is_active", true)
-          .order("sort_order")
-          .order("room_number"),
+      const [roomsResult, bookingsResult, blocksResult, ratesResult] =
+        await Promise.all([
+          supabase
+            .from("rooms")
+            .select("id, room_number, floor, default_price")
+            .eq("building_id", selectedId!)
+            .eq("is_active", true)
+            .order("sort_order")
+            .order("room_number"),
 
-        supabase
-          .from("bookings")
-          .select(
-            "id, room_id, check_in, check_out, status, source, total_price, deposit_paid, num_adults, num_children, note, guest:guests(full_name, phone)"
-          )
-          .eq("building_id", selectedId!)
-          .neq("status", "cancelled")
-          .lte("check_in", mEnd)
-          .gte("check_out", mStart),
+          supabase
+            .from("bookings")
+            .select(
+              "id, room_id, check_in, check_out, status, source, total_price, deposit_paid, num_adults, num_children, note, guest:guests(full_name, phone)"
+            )
+            .eq("building_id", selectedId!)
+            .neq("status", "cancelled")
+            .lte("check_in", mEnd)
+            .gte("check_out", mStart),
 
-        roomIds.length > 0
-          ? supabase
-              .from("room_blocks")
-              .select("id, room_id, start_date, end_date, reason")
-              .in("room_id", roomIds)
-              .lte("start_date", mEnd)
-              .gte("end_date", mStart)
-          : Promise.resolve({ data: [] }),
-      ])
+          roomIds.length > 0
+            ? supabase
+                .from("room_blocks")
+                .select("id, room_id, start_date, end_date, reason")
+                .in("room_id", roomIds)
+                .lte("start_date", mEnd)
+                .gte("end_date", mStart)
+            : Promise.resolve({ data: [] }),
+
+          roomIds.length > 0
+            ? supabase
+                .from("room_rates")
+                .select("id, room_id, date, price")
+                .in("room_id", roomIds)
+                .gte("date", mStart)
+                .lte("date", mEnd)
+            : Promise.resolve({ data: [] }),
+        ])
 
       return {
         rooms: (roomsResult.data ?? []) as CalRoom[],
         bookings: (bookingsResult.data ?? []) as unknown as CalBooking[],
         blocks: (blocksResult.data ?? []) as CalBlock[],
+        rates: (ratesResult.data ?? []) as CalRate[],
       }
     },
     enabled: !!selectedId,
@@ -113,6 +127,7 @@ export default function CalendarPage() {
   const rooms = data?.rooms ?? []
   const bookings = data?.bookings ?? []
   const blocks = data?.blocks ?? []
+  const rates = data?.rates ?? []
 
   // ── Click handlers ──
 
@@ -142,6 +157,11 @@ export default function CalendarPage() {
   function handleChooseBlock() {
     setChoiceOpen(false)
     setTimeout(() => setBlockOpen(true), 150)
+  }
+
+  function handleChooseRate() {
+    setChoiceOpen(false)
+    setTimeout(() => setRateOpen(true), 320)
   }
 
   // ── No building selected state ──
@@ -247,6 +267,7 @@ export default function CalendarPage() {
               rooms={rooms}
               bookings={bookings}
               blocks={blocks}
+              rates={rates}
               viewStart={viewStart}
               viewEnd={viewEnd}
               onBookingClick={handleBookingClick}
@@ -265,6 +286,7 @@ export default function CalendarPage() {
         date={selectedCell?.date ?? format(new Date(), "yyyy-MM-dd")}
         onBook={handleChooseBook}
         onBlock={handleChooseBlock}
+        onSetRate={handleChooseRate}
       />
 
       <CreateBookingDrawer
@@ -283,6 +305,15 @@ export default function CalendarPage() {
         onOpenChange={setDetailOpen}
         booking={selectedBooking}
         room={selectedBookingRoom}
+        onSuccess={() => fetchData()}
+      />
+
+      <SetRateDrawer
+        open={rateOpen}
+        onOpenChange={setRateOpen}
+        room={selectedRoom}
+        rooms={rooms}
+        defaultDate={selectedCell?.date ?? format(new Date(), "yyyy-MM-dd")}
         onSuccess={() => fetchData()}
       />
 
