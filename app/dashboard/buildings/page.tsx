@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation'
 import { Building2, ChevronRight, KeyRound, MapPin, Plus, X } from 'lucide-react'
 import { Drawer } from 'vaul'
 import { createClient } from '@/lib/supabase/client'
-import { useBuilding } from '@/components/building-context'
 import { createBuildingInline } from './actions'
 
 interface Building {
@@ -23,16 +22,9 @@ const textareaClass = 'flex min-h-20 w-full resize-none rounded-lg border-0 bg-b
 
 export default function BuildingsPage() {
   const router = useRouter()
-  const { selectedId } = useBuilding()
   const [buildings, setBuildings] = useState<Building[]>([])
   const [loading, setLoading] = useState(true)
   const [drawerOpen, setDrawerOpen] = useState(false)
-
-  useEffect(() => {
-    if (selectedId) {
-      router.replace(`/dashboard/buildings/${selectedId}`)
-    }
-  }, [selectedId, router])
 
   // form state
   const [name, setName] = useState('')
