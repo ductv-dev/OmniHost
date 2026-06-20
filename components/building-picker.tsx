@@ -34,7 +34,7 @@ export default function BuildingPicker({ open, onOpenChange }: BuildingPickerPro
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" />
         <Drawer.Content
-          className="fixed bottom-0 left-0 right-0 z-50 flex max-h-[80dvh] flex-col rounded-t-[2rem] border-t border-white/20 bg-white/95 shadow-2xl backdrop-blur-3xl dark:bg-zinc-900/95"
+          className="fixed bottom-0 left-0 right-0 z-50 flex max-h-[80svh] flex-col rounded-t-[2rem] border-t border-white/20 bg-white/95 shadow-2xl backdrop-blur-3xl dark:bg-zinc-900/95"
           aria-label="Chọn tòa nhà"
         >
           {/* Handle + header */}
@@ -166,7 +166,7 @@ function AddBuildingDrawer({
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-60 bg-black/40 backdrop-blur-sm" />
         <Drawer.Content
-          className="fixed bottom-0 left-0 right-0 z-60 flex max-h-[92dvh] flex-col rounded-t-[2rem] border-t border-white/20 bg-white shadow-2xl dark:bg-zinc-900"
+          className="fixed bottom-0 left-0 right-0 z-60 flex max-h-[92svh] flex-col rounded-t-[2rem] border-t border-white/20 bg-white shadow-2xl dark:bg-zinc-900"
           aria-label="Thêm tòa nhà"
         >
           <div className="shrink-0 px-5 pt-4">

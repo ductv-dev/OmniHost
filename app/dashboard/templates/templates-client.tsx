@@ -233,7 +233,7 @@ export default function TemplatesClient({
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 z-200 bg-black/40 backdrop-blur-sm" />
           <Drawer.Content
-            className="fixed bottom-0 left-0 right-0 z-200 flex max-h-[90dvh] flex-col rounded-t-[2rem] bg-white/95 shadow-2xl backdrop-blur-3xl dark:bg-zinc-900/95 max-w-130 mx-auto"
+            className="fixed bottom-0 left-0 right-0 z-200 flex max-h-[90svh] flex-col rounded-t-[2rem] bg-white/95 shadow-2xl backdrop-blur-3xl dark:bg-zinc-900/95 max-w-130 mx-auto"
             aria-label={editingTemplate ? 'Sửa template' : 'Template mới'}
           >
             {/* header */}
@@ -382,7 +382,7 @@ export default function TemplatesClient({
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 z-300 bg-black/40 backdrop-blur-sm" />
           <Drawer.Content
-            className="fixed bottom-0 left-0 right-0 z-300 flex max-h-[80dvh] flex-col rounded-t-[2rem] bg-white/95 shadow-2xl backdrop-blur-3xl dark:bg-zinc-900/95 max-w-130 mx-auto"
+            className="fixed bottom-0 left-0 right-0 z-300 flex max-h-[80svh] flex-col rounded-t-[2rem] bg-white/95 shadow-2xl backdrop-blur-3xl dark:bg-zinc-900/95 max-w-130 mx-auto"
             aria-label="Chèn biến"
           >
             {/* drag pill */}

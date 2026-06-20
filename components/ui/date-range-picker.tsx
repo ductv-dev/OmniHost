@@ -92,7 +92,7 @@ export function DateRangePicker({
       <Drawer.NestedRoot open={open} onOpenChange={setOpen}>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm" />
-          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-[60] flex max-h-[92dvh] flex-col rounded-t-[2rem] border-t border-white/20 bg-white shadow-2xl dark:bg-zinc-950">
+          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-[60] flex max-h-[92svh] flex-col rounded-t-[2rem] border-t border-white/20 bg-white shadow-2xl dark:bg-zinc-950">
             {/* Header */}
             <div className="shrink-0 px-5 pt-4 pb-3">
               <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-zinc-200 dark:bg-zinc-700" />
