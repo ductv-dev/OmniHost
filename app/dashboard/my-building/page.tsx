@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import BuildingHubClient from '../buildings/[id]/hub-client'
 import type { Tables } from '@/types/supabase'
 import { Building2 } from 'lucide-react'
+import { AppLoading } from '@/components/ui/app-loading'
 
 export default function MyBuildingPage() {
   const { selectedId, loading: buildingLoading } = useBuilding()
@@ -32,7 +33,7 @@ export default function MyBuildingPage() {
   })
 
   if (buildingLoading || (!!selectedId && isLoading)) {
-    return <HubSkeleton />
+    return <AppLoading compact label="Đang tải thông tin tòa nhà" />
   }
 
   if (!selectedId) {
@@ -52,18 +53,4 @@ export default function MyBuildingPage() {
   if (!data?.building) return null
 
   return <BuildingHubClient building={data.building} rooms={data.rooms} />
-}
-
-function HubSkeleton() {
-  return (
-    <div className="space-y-4 pb-3">
-      <div className="h-40 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800" />
-      <div className="h-12 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800" />
-      <div className="space-y-2">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-20 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800" />
-        ))}
-      </div>
-    </div>
-  )
 }

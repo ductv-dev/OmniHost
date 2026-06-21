@@ -39,6 +39,8 @@ export function BuildingProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
+    // This effect hydrates client-only building state from Supabase and localStorage.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchBuildings().then(list => {
       const saved = localStorage.getItem(STORAGE_KEY)
       const valid = saved && list.find(b => b.id === saved) ? saved : (list[0]?.id ?? null)
@@ -46,7 +48,6 @@ export function BuildingProvider({ children }: { children: ReactNode }) {
       if (valid) localStorage.setItem(STORAGE_KEY, valid)
       setLoading(false)
     })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function setSelectedId(id: string) {

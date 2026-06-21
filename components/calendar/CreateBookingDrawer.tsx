@@ -58,6 +58,8 @@ export default function CreateBookingDrawer({
   // Reset form when opened with new defaults
   useEffect(() => {
     if (open) {
+      // Opening the dialog intentionally resets its draft from the latest defaults.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCheckIn(defaultCheckIn)
       setRoomId(defaultRoomId)
       setCheckOut('')
@@ -83,11 +85,13 @@ export default function CreateBookingDrawer({
 
   useEffect(() => {
     if (nights > 0 && selectedRoom) {
+      // Keep the editable price draft in sync when room or stay length changes.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTotalPrice(nights * (selectedRoom.default_price ?? 0))
     } else {
       setTotalPrice('')
     }
-  }, [nights, selectedRoom?.id, selectedRoom?.default_price])
+  }, [nights, selectedRoom])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

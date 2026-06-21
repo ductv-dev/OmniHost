@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next"
 import { QueryProvider } from "@/components/query-provider"
 import { ServiceWorkerRegister } from "@/components/service-worker-register"
 import { ThemeProvider } from "@/components/theme-provider"
+import { OfflineGuard } from "@/components/offline-guard"
 
 export const metadata: Metadata = {
   applicationName: "OmniHost",
@@ -47,6 +48,7 @@ export default function RootLayout({
         <ThemeProvider>
           <QueryProvider>
             <ServiceWorkerRegister />
+            <OfflineGuard />
             {children}
           </QueryProvider>
         </ThemeProvider>

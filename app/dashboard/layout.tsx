@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { BuildingProvider, useBuilding } from '@/components/building-context'
 import BuildingPicker from '@/components/building-picker'
 import AppSidebar from '@/components/sidebar/AppSidebar'
+import { LumaMark } from '@/components/brand/luma-mark'
 
 const staticNavItems = [
   { href: '/dashboard/today',        icon: CalendarCheck, label: 'Hôm nay' },
@@ -69,7 +70,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
       <div className="relative mx-auto flex min-h-dvh w-full max-w-130 flex-col bg-white shadow-2xl shadow-zinc-950/5 dark:bg-zinc-950">
         {/* Header */}
         <header className="sticky top-0 z-30 flex items-center justify-between border-b border-zinc-200 bg-white/95 px-4 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
-          <span className="text-sm font-bold tracking-tight text-zinc-950 dark:text-white">OmniHost</span>
+          <span className="flex items-center gap-2 text-sm font-bold tracking-tight text-zinc-950 dark:text-white"><LumaMark className="size-7" /> OmniHost</span>
           <div className="flex items-center gap-2">
             <BuildingTab />
             <button

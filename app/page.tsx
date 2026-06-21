@@ -1,13 +1,14 @@
 import Link from 'next/link'
 import { ArrowRight, Building2, Key, MessageSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { LumaMark } from '@/components/brand/luma-mark'
 
 export default function Home() {
   return (
     <div className="relative flex min-h-dvh flex-col overflow-hidden bg-zinc-950 text-zinc-50">
       <header className="flex items-center justify-between px-4 pb-3 pt-[max(1rem,env(safe-area-inset-top))]">
         <div className="flex items-center gap-2">
-          <Building2 className="h-6 w-6 text-zinc-100" />
+          <LumaMark className="size-8" inverted />
           <span className="text-xl font-bold tracking-tight">OmniHost</span>
         </div>
         <nav className="flex items-center gap-3">

@@ -13,6 +13,7 @@ import { vi } from 'date-fns/locale'
 import { Building2, CalendarDays, LogIn, LogOut } from 'lucide-react'
 import { useState } from 'react'
 import { Drawer } from 'vaul'
+import { AppLoading } from '@/components/ui/app-loading'
 
 type TodayBooking = CalBooking & {
   check_in_time: string | null
@@ -89,11 +90,7 @@ export default function TodayPage() {
     : null
 
   if (buildingLoading) {
-    return (
-      <div className="flex h-60 items-center justify-center">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-900" />
-      </div>
-    )
+    return <AppLoading compact label="Đang tải tòa nhà" />
   }
 
   if (!selectedId) {
@@ -166,11 +163,7 @@ export default function TodayPage() {
 
         {/* List */}
         {isLoading ? (
-          <div className="space-y-2">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-28 animate-pulse rounded-2xl bg-zinc-100 dark:bg-zinc-800" />
-            ))}
-          </div>
+          <AppLoading compact className="rounded-2xl border border-zinc-100 dark:border-zinc-800" label="Đang tải lịch trong ngày" />
         ) : activeList.length === 0 ? (
           <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800">
             {tab === 'checkin'

@@ -14,17 +14,22 @@ File này là checklist chính của dự án. Mỗi task chỉ được chuyể
 - [x] Chặn người dùng tự nâng quyền và chặn anonymous truy cập dữ liệu.
 - [x] Bổ sung kiểm tra booking trùng lịch, phòng bị khóa, số tiền và audit history.
 - [x] Reset dữ liệu nghiệp vụ production theo yêu cầu, giữ tài khoản và profile super admin.
-- [x] Đồng bộ migration production đến `20260621070000`.
+- [x] Đồng bộ migration production đến `20260621080000`.
 - [x] Tạo Server Actions quản trị nhân sự, có kiểm tra super admin ở phía máy chủ.
 - [x] Tạo UI `/dashboard/access` cho super admin: mời nhân sự, gán nhiều tòa, đổi và gỡ quyền.
 - [x] Ẩn menu Phân quyền với tài khoản không phải super admin.
-- [x] Chạy 47/47 bài kiểm thử database, database lint, TypeScript và production build.
+- [x] Chạy 53/53 bài kiểm thử database, database lint, TypeScript và production build.
 
 ## Đang triển khai
 
 - [x] Hoàn thiện UX màn hình Phân quyền: tìm kiếm, trạng thái rỗng, xác nhận thao tác nguy hiểm và hướng dẫn vai trò.
 - [x] Sửa callback nhận lời mời để session được thiết lập ổn định trước khi đặt mật khẩu.
 - [x] Cho phép tạo một nhân sự và gán nhiều tòa với vai trò riêng ngay trong form mời.
+- [x] Chuẩn hóa loading toàn ứng dụng bằng loader custom, thay toàn bộ skeleton dữ liệu.
+- [x] Thiết kế lại quản lý nhân viên theo danh sách và hồ sơ quyền toàn màn hình; sửa lỗi không thêm được tòa hiện có.
+- [x] Thêm xóa tài khoản nhân viên an toàn, giữ nguyên booking và lịch sử vận hành.
+- [x] Đồng bộ logo, favicon, PWA icon và Apple icon theo hình học loader Luma.
+- [x] Thay PWA cache cũ bằng màn hình mất kết nối Luma, không cache dữ liệu ứng dụng.
 - [ ] Kiểm tra UI phân quyền trên kích thước mobile thực tế.
 
 ## Chưa làm

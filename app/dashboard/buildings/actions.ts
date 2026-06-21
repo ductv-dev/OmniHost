@@ -99,7 +99,7 @@ export async function createBuildingInline(input: {
     lobby_wifi_password: input.lobby_wifi_password?.trim() || null,
     drinking_water_note: input.drinking_water_note?.trim() || null,
     motorbike_parking_note: input.motorbike_parking_note?.trim() || null,
-    custom_templates: defaultTemplates as any,
+    custom_templates: defaultTemplates as unknown as Json,
   }]).select('id').single()
 
   if (error) return { error: error.message }

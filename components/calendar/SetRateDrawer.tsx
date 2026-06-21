@@ -38,6 +38,8 @@ export default function SetRateDrawer({
   // Reset form whenever the drawer opens with a new date/room
   useEffect(() => {
     if (open) {
+      // Opening the dialog intentionally starts a fresh rate draft.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStartDate(defaultDate)
       setEndDate(defaultDate)
       setPrice("")

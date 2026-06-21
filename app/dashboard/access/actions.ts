@@ -174,3 +174,29 @@ export async function removeAssignment(input: unknown): Promise<{ success: true 
     return { error: message(error) }
   }
 }
+
+export async function deleteStaffAccount(input: unknown): Promise<{ success: true } | { error: string }> {
+  try {
+    const currentUser = await requireSuperAdmin()
+    const parsed = z.object({ userId: z.string().uuid() }).safeParse(input)
+    if (!parsed.success) return { error: 'Tài khoản không hợp lệ' }
+    if (parsed.data.userId === currentUser.id) return { error: 'Bạn không thể tự xóa tài khoản của mình' }
+
+    const admin = createAdminClient()
+    const { data: target, error: targetError } = await admin
+      .from('profiles')
+      .select('is_super_admin')
+      .eq('id', parsed.data.userId)
+      .single()
+    if (targetError || !target) return { error: 'Không tìm thấy tài khoản nhân viên' }
+    if (target.is_super_admin) return { error: 'Không thể xóa tài khoản super admin' }
+
+    const { error } = await admin.auth.admin.deleteUser(parsed.data.userId)
+    if (error) return { error: error.message }
+
+    revalidatePath('/dashboard/access')
+    return { success: true }
+  } catch (error) {
+    return { error: message(error) }
+  }
+}

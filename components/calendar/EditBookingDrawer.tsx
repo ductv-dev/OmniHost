@@ -66,6 +66,8 @@ export default function EditBookingDrawer({
   // Sync from booking prop when drawer opens
   useEffect(() => {
     if (open) {
+      // Opening the dialog intentionally refreshes its draft from the booking prop.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFullName(booking.guest?.full_name ?? '')
       setPhone(booking.guest?.phone ?? '')
       setEmail(booking.guest?.email ?? '')
@@ -89,9 +91,11 @@ export default function EditBookingDrawer({
   useEffect(() => {
     if (checkIn && checkOut && checkOut > checkIn && selectedRoom) {
       const nights = differenceInDays(parseISO(checkOut), parseISO(checkIn))
+      // Recalculate the editable draft only when stay dates change.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTotalPrice(nights * (selectedRoom.default_price ?? 0))
     }
-  }, [checkIn, checkOut, selectedRoom?.id, selectedRoom?.default_price])
+  }, [checkIn, checkOut, selectedRoom])
 
   async function handleSave() {
     if (!fullName.trim()) { setError('Vui lòng nhập tên khách'); return }

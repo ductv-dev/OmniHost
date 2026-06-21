@@ -15,6 +15,7 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { login } from "./actions"
+import { LumaMark } from "@/components/brand/luma-mark"
 
 const formSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -55,9 +56,7 @@ export default function LoginPage() {
     <div className="flex min-h-dvh items-end justify-center bg-zinc-100 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-4 sm:items-center dark:bg-zinc-950">
       <Card className="w-full max-w-[520px]">
         <CardHeader className="space-y-2 p-4 pb-3">
-          <div className="mb-3 flex size-12 items-center justify-center rounded-lg bg-zinc-950 text-sm font-bold text-white dark:bg-white dark:text-zinc-950">
-            OH
-          </div>
+          <LumaMark className="mb-3 size-12" />
           <CardTitle className="text-2xl font-bold tracking-tight">
             Welcome back
           </CardTitle>

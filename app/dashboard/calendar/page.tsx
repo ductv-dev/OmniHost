@@ -25,6 +25,7 @@ import {
 } from "lucide-react"
 import { useState } from "react"
 import { Drawer } from "vaul"
+import { AppLoading } from "@/components/ui/app-loading"
 
 export default function CalendarPage() {
   const {
@@ -167,11 +168,7 @@ export default function CalendarPage() {
   // ── No building selected state ──
 
   if (buildingLoading) {
-    return (
-      <div className="flex h-60 items-center justify-center">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-900" />
-      </div>
-    )
+    return <AppLoading compact label="Đang tải tòa nhà" />
   }
 
   if (!selectedId) {
@@ -242,16 +239,9 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        {/* Loading skeleton */}
+        {/* Shared custom loading */}
         {dataLoading ? (
-          <div className="space-y-2 overflow-hidden rounded-[2rem] border border-white/20 bg-white/40 p-4 shadow-xl backdrop-blur-3xl dark:bg-zinc-900/40">
-            {[...Array(4)].map((_, i) => (
-              <div
-                key={i}
-                className="h-14 animate-pulse rounded-2xl bg-zinc-100 dark:bg-zinc-800"
-              />
-            ))}
-          </div>
+          <AppLoading compact className="rounded-[2rem] border border-white/20 bg-white/40 shadow-xl backdrop-blur-3xl dark:bg-zinc-900/40" label="Đang đồng bộ lịch phòng" />
         ) : rooms.length === 0 ? (
           <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-[2rem] border border-white/20 bg-white/40 shadow-xl backdrop-blur-3xl dark:bg-zinc-900/40">
             <p className="text-sm font-semibold text-zinc-500">

@@ -1,9 +1,5 @@
-import { LumaSpin } from '@/components/ui/luma-spin'
+import { AppLoading } from '@/components/ui/app-loading'
 
 export default function DashboardLoading() {
-  return (
-    <div className="flex h-[60dvh] items-center justify-center">
-      <LumaSpin />
-    </div>
-  )
+  return <AppLoading label="Đang mở không gian làm việc" />
 }
