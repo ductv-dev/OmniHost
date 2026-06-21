@@ -135,8 +135,9 @@ export default function AccessManager({ currentUserId, users, buildings }: {
   const [invitePending, setInvitePending] = useState(false)
   const [email, setEmail] = useState('')
   const [fullName, setFullName] = useState('')
-  const [inviteBuilding, setInviteBuilding] = useState(buildings[0]?.id ?? '')
-  const [inviteRole, setInviteRole] = useState<StaffRole>('staff')
+  const [inviteAssignments, setInviteAssignments] = useState<Record<string, StaffRole>>(
+    () => buildings[0] ? { [buildings[0].id]: 'staff' } : {}
+  )
   const [search, setSearch] = useState('')
   const [newAssignments, setNewAssignments] = useState<Record<string, { buildingId: string; role: StaffRole }>>({})
   const staffCount = useMemo(() => users.filter(item => !item.is_super_admin).length, [users])
@@ -156,12 +157,23 @@ export default function AccessManager({ currentUserId, users, buildings }: {
   async function submitInvite(event: React.FormEvent) {
     event.preventDefault()
     setInvitePending(true)
-    const result = await inviteStaff({ email, fullName, buildingId: inviteBuilding, role: inviteRole })
+    const assignments = Object.entries(inviteAssignments).map(([buildingId, role]) => ({ buildingId, role }))
+    const result = await inviteStaff({ email, fullName, assignments })
     setInvitePending(false)
     if ('error' in result) return changed(result.error, true)
     setEmail('')
     setFullName('')
+    setInviteAssignments(buildings[0] ? { [buildings[0].id]: 'staff' } : {})
     changed('Đã gửi lời mời và gán quyền')
+  }
+
+  function toggleInviteBuilding(buildingId: string, checked: boolean) {
+    setInviteAssignments(current => {
+      if (checked) return { ...current, [buildingId]: current[buildingId] ?? 'staff' }
+      const next = { ...current }
+      delete next[buildingId]
+      return next
+    })
   }
 
   async function addAssignment(userId: string) {
@@ -232,12 +244,48 @@ export default function AccessManager({ currentUserId, users, buildings }: {
           <form onSubmit={submitInvite} className="space-y-3">
             <div><Label htmlFor="staff-name">Họ tên</Label><Input id="staff-name" value={fullName} onChange={event => setFullName(event.target.value)} className="mt-1 h-12 text-base" autoComplete="name" required /></div>
             <div><Label htmlFor="staff-email">Email</Label><Input id="staff-email" value={email} onChange={event => setEmail(event.target.value)} className="mt-1 h-12 text-base" type="email" inputMode="email" autoComplete="email" required /></div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div><Label htmlFor="staff-building">Tòa nhà</Label><SelectField id="staff-building" value={inviteBuilding} onChange={event => setInviteBuilding(event.target.value)}>{buildings.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</SelectField></div>
-              <div><Label htmlFor="staff-role">Vai trò</Label><SelectField id="staff-role" value={inviteRole} onChange={event => setInviteRole(event.target.value as StaffRole)}>{ROLES.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}</SelectField></div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <Label>Tòa nhà được quản lý</Label>
+                <span className="text-xs font-semibold text-zinc-400">Đã chọn {Object.keys(inviteAssignments).length}</span>
+              </div>
+              <div className="space-y-2">
+                {buildings.map(building => {
+                  const selectedRole = inviteAssignments[building.id]
+                  const selected = Boolean(selectedRole)
+                  return (
+                    <div key={building.id} className={`rounded-2xl border p-3 transition-colors ${selected ? 'border-zinc-950 bg-zinc-50 dark:border-white dark:bg-zinc-900' : 'border-zinc-200 dark:border-zinc-800'}`}>
+                      <label className="flex min-h-8 cursor-pointer items-start gap-3">
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={event => toggleInviteBuilding(building.id, event.target.checked)}
+                          className="mt-0.5 size-5 shrink-0 accent-zinc-950 dark:accent-white"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-bold">{building.name}</span>
+                          <span className="block truncate text-xs text-zinc-500">{building.address}</span>
+                        </span>
+                      </label>
+                      {selected && (
+                        <div className="mt-3 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+                          <Label htmlFor={`invite-role-${building.id}`} className="sr-only">Vai trò tại {building.name}</Label>
+                          <SelectField
+                            id={`invite-role-${building.id}`}
+                            value={selectedRole}
+                            onChange={event => setInviteAssignments(current => ({ ...current, [building.id]: event.target.value as StaffRole }))}
+                          >
+                            {ROLES.map(item => <option key={item.value} value={item.value}>{item.label} — {item.description}</option>)}
+                          </SelectField>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
             </div>
-            <p className="text-xs text-zinc-500">{ROLES.find(item => item.value === inviteRole)?.description}</p>
-            <Button className="h-12 w-full rounded-xl" disabled={invitePending}>{invitePending ? 'Đang gửi lời mời…' : 'Gửi lời mời'}</Button>
+            {Object.keys(inviteAssignments).length === 0 && <p className="text-sm font-medium text-red-600">Chọn ít nhất một tòa nhà.</p>}
+            <Button className="h-12 w-full rounded-xl" disabled={invitePending || Object.keys(inviteAssignments).length === 0}>{invitePending ? 'Đang gửi lời mời…' : `Gửi lời mời · ${Object.keys(inviteAssignments).length} tòa`}</Button>
           </form>
         )}
       </section>

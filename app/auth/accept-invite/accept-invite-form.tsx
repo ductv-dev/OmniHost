@@ -35,6 +35,20 @@ export default function AcceptInviteForm() {
         return
       }
 
+      const accessToken = hash.get('access_token')
+      const refreshToken = hash.get('refresh_token')
+      if (accessToken && refreshToken) {
+        const { error: setSessionError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        })
+        if (setSessionError && active) {
+          setError(setSessionError.message)
+          setPageState('invalid')
+          return
+        }
+      }
+
       const { data, error: sessionError } = await supabase.auth.getSession()
       if (!active) return
 

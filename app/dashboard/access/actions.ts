@@ -8,18 +8,23 @@ import { createClient } from '@/lib/supabase/server'
 
 const roleSchema = z.enum(['manager', 'staff', 'booking_agent'])
 
-const assignmentSchema = z.object({
-  userId: z.string().uuid(),
+const buildingRoleSchema = z.object({
   buildingId: z.string().uuid(),
   role: roleSchema,
+})
+
+const assignmentSchema = buildingRoleSchema.extend({
+  userId: z.string().uuid(),
 })
 
 const inviteSchema = z.object({
   email: z.string().trim().email('Email không hợp lệ'),
   fullName: z.string().trim().min(2, 'Tên cần ít nhất 2 ký tự'),
-  buildingId: z.string().uuid('Chọn tòa nhà'),
-  role: roleSchema,
-})
+  assignments: z.array(buildingRoleSchema).min(1, 'Chọn ít nhất một tòa nhà'),
+}).refine(
+  data => new Set(data.assignments.map(item => item.buildingId)).size === data.assignments.length,
+  { message: 'Danh sách tòa nhà bị trùng', path: ['assignments'] }
+)
 
 async function requireSuperAdmin() {
   const supabase = await createClient()
@@ -71,9 +76,15 @@ export async function inviteStaff(input: unknown): Promise<{ success: true } | {
     if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? 'Dữ liệu không hợp lệ' }
 
     const admin = createAdminClient()
-    const { email, fullName, buildingId, role } = parsed.data
-    const { data: building } = await admin.from('buildings').select('id').eq('id', buildingId).single()
-    if (!building) return { error: 'Tòa nhà không tồn tại' }
+    const { email, fullName, assignments } = parsed.data
+    const buildingIds = assignments.map(item => item.buildingId)
+    const { data: buildings, error: buildingsError } = await admin
+      .from('buildings')
+      .select('id')
+      .in('id', buildingIds)
+    if (buildingsError || buildings?.length !== buildingIds.length) {
+      return { error: 'Có tòa nhà không tồn tại hoặc đã bị xóa' }
+    }
 
     const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
       data: { full_name: fullName },
@@ -100,10 +111,11 @@ export async function inviteStaff(input: unknown): Promise<{ success: true } | {
 
     const { error: assignmentError } = await admin
       .from('staff_assignments')
-      .upsert(
-        { user_id: data.user.id, building_id: buildingId, role },
-        { onConflict: 'user_id,building_id' }
-      )
+      .insert(assignments.map(item => ({
+        user_id: data.user.id,
+        building_id: item.buildingId,
+        role: item.role,
+      })))
     if (assignmentError) {
       await admin.auth.admin.deleteUser(data.user.id)
       return { error: assignmentError.message }

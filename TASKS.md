@@ -23,12 +23,14 @@ File này là checklist chính của dự án. Mỗi task chỉ được chuyể
 ## Đang triển khai
 
 - [x] Hoàn thiện UX màn hình Phân quyền: tìm kiếm, trạng thái rỗng, xác nhận thao tác nguy hiểm và hướng dẫn vai trò.
-- [x] Thêm màn hình nhận lời mời và đặt mật khẩu lần đầu cho nhân sự.
+- [x] Sửa callback nhận lời mời để session được thiết lập ổn định trước khi đặt mật khẩu.
+- [x] Cho phép tạo một nhân sự và gán nhiều tòa với vai trò riêng ngay trong form mời.
 - [ ] Kiểm tra UI phân quyền trên kích thước mobile thực tế.
 
 ## Chưa làm
 
 - [ ] Deploy code giao diện mới lên môi trường production của ứng dụng.
+- [ ] Cập nhật Supabase Invite email template để đi qua `/auth/confirm` và gửi lại lời mời thử.
 - [ ] Cấu hình và gửi thử email mời nhân sự qua SMTP production.
 - [ ] Kiểm thử end-to-end bằng tài khoản thật cho từng vai trò.
 - [ ] Ẩn/hiện các nút thao tác trong từng màn hình theo capability của vai trò; RLS hiện đã chặn ở database.
