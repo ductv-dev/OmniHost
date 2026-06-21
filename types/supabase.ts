@@ -221,6 +221,7 @@ export type Database = {
           gender: string | null
           country: string | null
           note: string | null
+          created_by: string | null
           created_at: string
         }
         Insert: {
@@ -231,6 +232,7 @@ export type Database = {
           gender?: string | null
           country?: string | null
           note?: string | null
+          created_by?: string | null
           created_at?: string
         }
         Update: {
@@ -241,9 +243,18 @@ export type Database = {
           gender?: string | null
           country?: string | null
           note?: string | null
+          created_by?: string | null
           created_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "guests_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       bookings: {
         Row: {
@@ -399,28 +410,42 @@ export type Database = {
         Row: {
           id: string
           booking_id: string
+          building_id: string | null
           action: string
           changes: Json | null
+          booking_snapshot: Json | null
           changed_by: string | null
           changed_at: string
         }
         Insert: {
           id?: string
           booking_id: string
+          building_id?: string | null
           action: string
           changes?: Json | null
+          booking_snapshot?: Json | null
           changed_by?: string | null
           changed_at?: string
         }
         Update: {
           id?: string
           booking_id?: string
+          building_id?: string | null
           action?: string
           changes?: Json | null
+          booking_snapshot?: Json | null
           changed_by?: string | null
           changed_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "booking_history_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

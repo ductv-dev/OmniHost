@@ -1,7 +1,7 @@
 'use client'
 
 import { AnimatePresence, motion } from 'framer-motion'
-import { X, FileText, Plus, MessageSquare } from 'lucide-react'
+import { X, FileText, Plus, MessageSquare, ShieldCheck } from 'lucide-react'
 import Link from 'next/link'
 
 interface NavLink {
@@ -25,9 +25,10 @@ const NAV_SECTIONS: { title: string; links: NavLink[] }[] = [
 interface AppSidebarProps {
   open: boolean
   onClose: () => void
+  isSuperAdmin?: boolean
 }
 
-export default function AppSidebar({ open, onClose }: AppSidebarProps) {
+export default function AppSidebar({ open, onClose, isSuperAdmin = false }: AppSidebarProps) {
   return (
     <AnimatePresence>
       {open && (
@@ -87,6 +88,21 @@ export default function AppSidebar({ open, onClose }: AppSidebarProps) {
                   </div>
                 </div>
               ))}
+              {isSuperAdmin && (
+                <div>
+                  <p className="mb-2 px-1 text-[11px] font-bold uppercase tracking-widest text-zinc-400">
+                    Quản trị hệ thống
+                  </p>
+                  <Link
+                    href="/dashboard/access"
+                    onClick={onClose}
+                    className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-100 active:scale-95 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                  >
+                    <ShieldCheck className="size-4 shrink-0 text-emerald-600" />
+                    Phân quyền nhân sự
+                  </Link>
+                </div>
+              )}
             </div>
 
             <div className="pb-[env(safe-area-inset-bottom)]" />

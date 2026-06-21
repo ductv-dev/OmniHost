@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from 'react'
 import { Plus, Edit2, Trash2, Building2, PenLine, ChevronDown } from 'lucide-react'
-import { Drawer } from 'vaul'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import {
   DB_VARIABLES,
   MANUAL_VARIABLE_SUGGESTIONS,
@@ -250,18 +250,16 @@ export default function TemplatesTab({ building }: { building: Tables<'buildings
         )}
       </div>
 
-      <Drawer.Root open={isModalOpen} onOpenChange={v => { if (!v) setIsModalOpen(false) }}>
-        <Drawer.Portal>
-          <Drawer.Overlay className="fixed inset-0 z-200 bg-black/40 backdrop-blur-sm" />
-          <Drawer.Content
-            className="fixed bottom-0 left-0 right-0 z-200 flex max-h-[90svh] flex-col rounded-t-[2rem] bg-white/95 shadow-2xl backdrop-blur-3xl dark:bg-zinc-900/95 max-w-130 mx-auto"
+      <Dialog open={isModalOpen} onOpenChange={v => { if (!v) setIsModalOpen(false) }}>
+          <DialogContent
+            overlayClassName="z-200"
+            className="z-200 flex h-dvh w-screen max-w-none flex-col gap-0 rounded-none border-0 bg-white/95 p-0 backdrop-blur-3xl dark:bg-zinc-900/95 sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-2xl sm:border"
             aria-label={editingTemplate ? 'Sửa template' : 'Template mới'}
           >
-            <div className="shrink-0 px-4 pt-3 pb-3">
-              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-zinc-200 dark:bg-zinc-800" />
-              <Drawer.Title className="text-lg font-semibold">
+            <div className="shrink-0 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3">
+              <DialogTitle className="text-lg font-semibold">
                 {editingTemplate ? 'Sửa template' : 'Template mới'}
-              </Drawer.Title>
+              </DialogTitle>
             </div>
 
             <div className="flex-1 overflow-y-auto border-t border-zinc-100 px-4 py-4 dark:border-zinc-900">
@@ -445,9 +443,8 @@ export default function TemplatesTab({ building }: { building: Tables<'buildings
                 {isLoading ? 'Đang lưu...' : 'Lưu template'}
               </Button>
             </div>
-          </Drawer.Content>
-        </Drawer.Portal>
-      </Drawer.Root>
+          </DialogContent>
+      </Dialog>
     </div>
   )
 }

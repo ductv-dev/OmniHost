@@ -6,7 +6,7 @@ import {
 } from "@/app/dashboard/bookings/actions"
 import { Trash2, X } from "lucide-react"
 import { useState } from "react"
-import { Drawer } from "vaul"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import type { CalBlock, CalRoom } from "./TimelineCalendar"
 
 interface BlockRoomDrawerProps {
@@ -82,27 +82,24 @@ export default function BlockRoomDrawer({
     "w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900"
 
   return (
-    <Drawer.Root
+    <Dialog
       open={open}
       onOpenChange={(v) => {
         onOpenChange(v)
         if (!v) setConfirmDelete(false)
       }}
     >
-      <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" />
-        <Drawer.Content
+        <DialogContent
           key={open ? (existingBlock?.id ?? defaultStartDate) : "closed"}
-          className="fixed right-0 bottom-0 left-0 z-50 flex max-h-[92svh] flex-col rounded-t-[2rem] border-t border-white/20 bg-white/95 shadow-2xl backdrop-blur-3xl dark:bg-zinc-900/95"
+          className="flex h-dvh w-screen max-w-none flex-col gap-0 rounded-none border-0 bg-white/95 p-0 backdrop-blur-3xl dark:bg-zinc-900/95 sm:h-auto sm:max-h-[92vh] sm:max-w-lg sm:rounded-2xl sm:border"
           aria-label={isViewMode ? "Chi tiết khóa phòng" : "Khóa phòng"}
         >
-          <div className="shrink-0 px-5 pt-4">
-            <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+          <div className="shrink-0 px-5 pt-[max(1rem,env(safe-area-inset-top))]">
             <div className="flex items-center justify-between">
               <div>
-                <Drawer.Title className="text-lg font-bold text-zinc-950 dark:text-white">
+                <DialogTitle className="text-lg font-bold text-zinc-950 dark:text-white">
                   {isViewMode ? "Phòng đã khóa" : "Khóa phòng"}
-                </Drawer.Title>
+                </DialogTitle>
                 <p className="mt-0.5 text-sm text-zinc-500">
                   {room?.room_number}
                 </p>
@@ -209,8 +206,7 @@ export default function BlockRoomDrawer({
                 </div>
               </div>
             </div>
-        </Drawer.Content>
-      </Drawer.Portal>
-    </Drawer.Root>
+        </DialogContent>
+    </Dialog>
   )
 }

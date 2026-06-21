@@ -40,6 +40,10 @@ const formSchema = z
     message: 'Ngày trả phòng phải sau ngày nhận phòng',
     path: ['check_out'],
   })
+  .refine((d) => d.deposit_paid <= d.total_price, {
+    message: 'Tiền cọc không được lớn hơn tổng tiền',
+    path: ['deposit_paid'],
+  })
 
 type FormValues = z.infer<typeof formSchema>
 

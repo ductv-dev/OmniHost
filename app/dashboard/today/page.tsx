@@ -4,13 +4,15 @@ import { useBuilding } from '@/components/building-context'
 import BookingDetailDrawer from '@/components/calendar/BookingDetailDrawer'
 import type { CalBooking, CalRoom } from '@/components/calendar/TimelineCalendar'
 import SourceIcon from '@/components/booking/SourceIcon'
+import { Calendar } from '@/components/ui/calendar'
 import type { BookingSource } from '@/types/booking'
 import { createClient } from '@/lib/supabase/client'
 import { useQuery } from '@tanstack/react-query'
-import { addDays, differenceInDays, format, parseISO, startOfToday, subDays } from 'date-fns'
+import { addDays, differenceInDays, format, isToday, parseISO, startOfToday, subDays } from 'date-fns'
 import { vi } from 'date-fns/locale'
-import { Building2, LogIn, LogOut } from 'lucide-react'
+import { Building2, CalendarDays, LogIn, LogOut } from 'lucide-react'
 import { useState } from 'react'
+import { Drawer } from 'vaul'
 
 type TodayBooking = CalBooking & {
   check_in_time: string | null
@@ -40,23 +42,25 @@ const SELECT_BOOKING =
 export default function TodayPage() {
   const { selectedId, selectedBuilding, loading: buildingLoading } = useBuilding()
   const [tab, setTab] = useState<'checkin' | 'checkout'>('checkin')
+  const [selectedDate, setSelectedDate] = useState(() => startOfToday())
+  const [datePickerOpen, setDatePickerOpen] = useState(false)
   const [selectedBooking, setSelectedBooking] = useState<TodayBooking | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
 
-  const today = format(startOfToday(), 'yyyy-MM-dd')
+  const selectedDateString = format(selectedDate, 'yyyy-MM-dd')
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['today', selectedId, today],
+    queryKey: ['today', selectedId, selectedDateString],
     queryFn: async () => {
       const supabase = createClient()
-      const rangeStart = format(subDays(startOfToday(), 7), 'yyyy-MM-dd')
-      const rangeEnd   = format(addDays(startOfToday(), 60), 'yyyy-MM-dd')
+      const rangeStart = format(subDays(selectedDate, 7), 'yyyy-MM-dd')
+      const rangeEnd   = format(addDays(selectedDate, 60), 'yyyy-MM-dd')
 
       const [checkInsRes, checkOutsRes, roomsRes, allBookingsRes] = await Promise.all([
         supabase.from('bookings').select(SELECT_BOOKING)
-          .eq('building_id', selectedId!).eq('check_in', today).neq('status', 'cancelled'),
+          .eq('building_id', selectedId!).eq('check_in', selectedDateString).neq('status', 'cancelled'),
         supabase.from('bookings').select(SELECT_BOOKING)
-          .eq('building_id', selectedId!).eq('check_out', today).neq('status', 'cancelled'),
+          .eq('building_id', selectedId!).eq('check_out', selectedDateString).neq('status', 'cancelled'),
         supabase.from('rooms').select('id, room_number, floor, default_price')
           .eq('building_id', selectedId!).eq('is_active', true).order('sort_order').order('room_number'),
         supabase.from('bookings').select(SELECT_BOOKING)
@@ -110,11 +114,21 @@ export default function TodayPage() {
     <>
       <div className="space-y-3">
         {/* Header */}
-        <div>
-          <p className="text-xs text-zinc-500">{selectedBuilding?.name}</p>
-          <h1 className="text-xl font-bold capitalize tracking-tight">
-            {format(startOfToday(), 'EEEE, dd/MM', { locale: vi })}
-          </h1>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs text-zinc-500">{selectedBuilding?.name}</p>
+            <h1 className="text-xl font-bold capitalize tracking-tight">
+              {format(selectedDate, 'EEEE, dd/MM', { locale: vi })}
+            </h1>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDatePickerOpen(true)}
+            className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-700 shadow-sm transition-colors active:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
+            aria-label="Chọn ngày"
+          >
+            <CalendarDays className="size-5" />
+          </button>
         </div>
 
         {/* Tabs */}
@@ -160,8 +174,8 @@ export default function TodayPage() {
         ) : activeList.length === 0 ? (
           <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800">
             {tab === 'checkin'
-              ? <><LogIn className="size-8 text-zinc-300" /><p className="text-sm text-zinc-400">Không có check-in hôm nay</p></>
-              : <><LogOut className="size-8 text-zinc-300" /><p className="text-sm text-zinc-400">Không có check-out hôm nay</p></>
+              ? <><LogIn className="size-8 text-zinc-300" /><p className="text-sm text-zinc-400">Không có check-in trong ngày này</p></>
+              : <><LogOut className="size-8 text-zinc-300" /><p className="text-sm text-zinc-400">Không có check-out trong ngày này</p></>
             }
           </div>
         ) : (
@@ -188,6 +202,57 @@ export default function TodayPage() {
         allBookings={allBookings}
         onSuccess={() => refetch()}
       />
+
+      <Drawer.Root open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+        <Drawer.Portal>
+          <Drawer.Overlay className="fixed inset-0 z-60 bg-black/40 backdrop-blur-sm" />
+          <Drawer.Content className="fixed right-0 bottom-0 left-0 z-60 flex max-h-[92svh] flex-col rounded-t-[2rem] border-t border-white/20 bg-white shadow-2xl dark:bg-zinc-950">
+            <div className="shrink-0 px-5 pt-4 pb-3">
+              <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-zinc-200 dark:bg-zinc-700" />
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <Drawer.Title className="text-base font-bold">Chọn ngày</Drawer.Title>
+                  <p className="mt-0.5 text-sm capitalize text-zinc-500">
+                    {format(selectedDate, 'EEEE, dd/MM/yyyy', { locale: vi })}
+                  </p>
+                </div>
+                {!isToday(selectedDate) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedDate(startOfToday())
+                      setDatePickerOpen(false)
+                    }}
+                    className="rounded-xl bg-zinc-100 px-3 py-2 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+                  >
+                    Hôm nay
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-1 items-start justify-center overflow-y-auto px-2 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={(date) => {
+                  if (date) {
+                    setSelectedDate(date)
+                    setDatePickerOpen(false)
+                  }
+                }}
+                locale={vi}
+                classNames={{
+                  root: 'w-full',
+                  month_grid: 'w-full',
+                  weekday: 'flex-1 py-1 text-center text-xs text-zinc-400',
+                  week: 'flex w-full',
+                  day: 'flex-1 text-center',
+                }}
+              />
+            </div>
+          </Drawer.Content>
+        </Drawer.Portal>
+      </Drawer.Root>
     </>
   )
 }

@@ -7,7 +7,7 @@ import type { BookingSource } from '@/types/booking'
 import { differenceInDays, parseISO } from 'date-fns'
 import { ChevronDown, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Drawer } from 'vaul'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import type { CalBooking, CalRoom } from './TimelineCalendar'
 
 const SOURCE_OPTIONS = [
@@ -97,6 +97,10 @@ export default function EditBookingDrawer({
     if (!fullName.trim()) { setError('Vui lòng nhập tên khách'); return }
     if (!checkIn || !checkOut) { setError('Vui lòng chọn ngày'); return }
     if (checkOut <= checkIn) { setError('Ngày trả phòng phải sau ngày nhận'); return }
+    if (depositPaid > (typeof totalPrice === 'number' ? totalPrice : 0)) {
+      setError('Tiền cọc không được lớn hơn tổng tiền')
+      return
+    }
 
     setLoading(true)
     setError(null)
@@ -134,19 +138,17 @@ export default function EditBookingDrawer({
   const otherBookings = allBookings.filter(b => b.id !== booking.id && b.room_id === booking.room_id)
 
   return (
-    <Drawer.NestedRoot open={open} onOpenChange={onOpenChange}>
-      <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 z-60 bg-black/20 backdrop-blur-sm" />
-        <Drawer.Content
-          className="fixed bottom-0 left-0 right-0 z-60 flex max-h-[92svh] flex-col rounded-t-[2rem] border-t border-white/20 bg-white/95 shadow-2xl backdrop-blur-3xl dark:bg-zinc-900/95"
+    <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent
+          overlayClassName="z-60 bg-black/20"
+          className="z-60 flex h-dvh w-screen max-w-none flex-col gap-0 rounded-none border-0 bg-white/95 p-0 backdrop-blur-3xl dark:bg-zinc-900/95 sm:h-auto sm:max-h-[92vh] sm:max-w-2xl sm:rounded-2xl sm:border"
           aria-label="Sửa booking"
         >
-          <div className="shrink-0 px-5 pt-4">
-            <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+          <div className="shrink-0 px-5 pt-[max(1rem,env(safe-area-inset-top))]">
             <div className="flex items-center justify-between">
-              <Drawer.Title className="text-lg font-bold text-zinc-950 dark:text-white">
+              <DialogTitle className="text-lg font-bold text-zinc-950 dark:text-white">
                 Sửa booking
-              </Drawer.Title>
+              </DialogTitle>
               <button
                 onClick={() => onOpenChange(false)}
                 className="flex size-8 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 dark:bg-zinc-800"
@@ -282,9 +284,8 @@ export default function EditBookingDrawer({
               </div>
             </div>
           </div>
-        </Drawer.Content>
-      </Drawer.Portal>
-    </Drawer.NestedRoot>
+        </DialogContent>
+    </Dialog>
   )
 }
 

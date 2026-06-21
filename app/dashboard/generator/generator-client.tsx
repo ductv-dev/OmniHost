@@ -7,7 +7,7 @@ import {
   Building2, PenLine, ListOrdered,
   ChevronUp, ChevronDown, Edit2, Trash2, Layers,
 } from 'lucide-react'
-import { Drawer } from 'vaul'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
@@ -730,23 +730,20 @@ export default function GeneratorClient({
         </div>
       )}
 
-      {/* ── Template Sheet ── */}
-      <Drawer.Root open={!!sheetTemplate} onOpenChange={v => { if (!v) closeSheet() }}>
-        <Drawer.Portal>
-          <Drawer.Overlay className="fixed inset-0 z-200 bg-black/40 backdrop-blur-sm" />
-          <Drawer.Content
-            className="fixed bottom-0 left-0 right-0 z-200 flex max-h-[90svh] flex-col rounded-t-[2rem] bg-white/95 shadow-2xl backdrop-blur-3xl dark:bg-zinc-900/95 max-w-130 mx-auto"
+      {/* ── Template form dialog ── */}
+      <Dialog open={!!sheetTemplate} onOpenChange={v => { if (!v) closeSheet() }}>
+          <DialogContent
+            overlayClassName="z-200"
+            className="z-200 flex h-dvh w-screen max-w-none flex-col gap-0 rounded-none border-0 bg-white/95 p-0 backdrop-blur-3xl dark:bg-zinc-900/95 sm:h-auto sm:max-h-[90vh] sm:max-w-xl sm:rounded-2xl sm:border"
             aria-label={sheetTemplate?.name ?? 'Template'}
           >
-            {/* drag pill */}
-            <div className="mx-auto mt-3 mb-1 h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-600" />
             {/* header */}
-            <div className="flex shrink-0 items-center justify-between px-4 pb-3 pt-2">
+            <div className="flex shrink-0 items-center justify-between px-4 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {sheetTemplate?.category}
                 </p>
-                <Drawer.Title className="text-base font-semibold leading-tight">{sheetTemplate?.name}</Drawer.Title>
+                <DialogTitle className="text-base font-semibold leading-tight">{sheetTemplate?.name}</DialogTitle>
               </div>
               <button onClick={closeSheet} className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900">
                 <X className="size-5" />
@@ -802,23 +799,19 @@ export default function GeneratorClient({
                 {pendingQueueItemId ? 'Xác nhận' : <><Plus className="mr-2 size-4" /> Thêm vào hàng</>}
               </Button>
             </div>
-          </Drawer.Content>
-        </Drawer.Portal>
-      </Drawer.Root>
+          </DialogContent>
+      </Dialog>
 
-      {/* ── Create Template Drawer ── */}
-      <Drawer.Root open={createTplOpen} onOpenChange={v => { if (!v) setCreateTplOpen(false) }}>
-        <Drawer.Portal>
-          <Drawer.Overlay className="fixed inset-0 z-200 bg-black/40 backdrop-blur-sm" />
-          <Drawer.Content
-            className="fixed bottom-0 left-0 right-0 z-200 flex max-h-[90svh] flex-col rounded-t-[2rem] bg-white/95 shadow-2xl backdrop-blur-3xl dark:bg-zinc-900/95 max-w-130 mx-auto"
+      {/* ── Create Template Dialog ── */}
+      <Dialog open={createTplOpen} onOpenChange={v => { if (!v) setCreateTplOpen(false) }}>
+          <DialogContent
+            overlayClassName="z-200"
+            className="z-200 flex h-dvh w-screen max-w-none flex-col gap-0 rounded-none border-0 bg-white/95 p-0 backdrop-blur-3xl dark:bg-zinc-900/95 sm:h-auto sm:max-h-[90vh] sm:max-w-xl sm:rounded-2xl sm:border"
             aria-label="Tạo template mới"
           >
-            {/* drag pill */}
-            <div className="mx-auto mt-3 mb-1 h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-600" />
             {/* header */}
-            <div className="flex shrink-0 items-center justify-between px-4 pb-3 pt-2">
-              <Drawer.Title className="text-base font-semibold">Tạo template mới</Drawer.Title>
+            <div className="flex shrink-0 items-center justify-between px-4 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
+              <DialogTitle className="text-base font-semibold">Tạo template mới</DialogTitle>
               <button onClick={() => setCreateTplOpen(false)} className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900">
                 <X className="size-5" />
               </button>
@@ -887,23 +880,19 @@ export default function GeneratorClient({
                 </Button>
               </div>
             </div>
-          </Drawer.Content>
-        </Drawer.Portal>
-      </Drawer.Root>
+          </DialogContent>
+      </Dialog>
 
-      {/* ── Variable picker (inside Create Template) ── */}
-      <Drawer.Root open={tplVarDrawerOpen} onOpenChange={v => { if (!v) setTplVarDrawerOpen(false) }}>
-        <Drawer.Portal>
-          <Drawer.Overlay className="fixed inset-0 z-300 bg-black/40 backdrop-blur-sm" />
-          <Drawer.Content
-            className="fixed bottom-0 left-0 right-0 z-300 flex max-h-[80svh] flex-col rounded-t-[2rem] bg-white/95 shadow-2xl backdrop-blur-3xl dark:bg-zinc-900/95 max-w-130 mx-auto"
+      {/* ── Variable picker dialog (inside Create Template) ── */}
+      <Dialog open={tplVarDrawerOpen} onOpenChange={v => { if (!v) setTplVarDrawerOpen(false) }}>
+          <DialogContent
+            overlayClassName="z-300"
+            className="z-300 flex h-dvh w-screen max-w-none flex-col gap-0 rounded-none border-0 bg-white/95 p-0 backdrop-blur-3xl dark:bg-zinc-900/95 sm:h-auto sm:max-h-[80vh] sm:max-w-xl sm:rounded-2xl sm:border"
             aria-label="Chèn biến"
           >
-            {/* drag pill */}
-            <div className="mx-auto mt-3 mb-1 h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-600" />
             {/* header */}
-            <div className="shrink-0 flex items-center justify-between px-4 pt-2 pb-3">
-              <Drawer.Title className="font-semibold">Chèn biến</Drawer.Title>
+            <div className="shrink-0 flex items-center justify-between px-4 pt-[max(0.5rem,env(safe-area-inset-top))] pb-3">
+              <DialogTitle className="font-semibold">Chèn biến</DialogTitle>
               <button
                 onClick={() => setTplVarDrawerOpen(false)}
                 className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900"
@@ -971,25 +960,21 @@ export default function GeneratorClient({
                 Xong
               </Button>
             </div>
-          </Drawer.Content>
-        </Drawer.Portal>
-      </Drawer.Root>
+          </DialogContent>
+      </Dialog>
 
       {/* ── Flow Editor Modal ── */}
-      <Drawer.Root open={flowModalOpen} onOpenChange={v => { if (!v) setFlowModalOpen(false) }}>
-        <Drawer.Portal>
-          <Drawer.Overlay className="fixed inset-0 z-200 bg-black/40 backdrop-blur-sm" />
-          <Drawer.Content
-            className="fixed bottom-0 left-0 right-0 z-200 flex max-h-[90svh] flex-col rounded-t-[2rem] bg-white/95 shadow-2xl backdrop-blur-3xl dark:bg-zinc-900/95 max-w-130 mx-auto"
+      <Dialog open={flowModalOpen} onOpenChange={v => { if (!v) setFlowModalOpen(false) }}>
+          <DialogContent
+            overlayClassName="z-200"
+            className="z-200 flex h-dvh w-screen max-w-none flex-col gap-0 rounded-none border-0 bg-white/95 p-0 backdrop-blur-3xl dark:bg-zinc-900/95 sm:h-auto sm:max-h-[90vh] sm:max-w-xl sm:rounded-2xl sm:border"
             aria-label={editingFlow ? 'Chỉnh sửa luồng' : 'Tạo luồng mới'}
           >
-            {/* drag pill */}
-            <div className="mx-auto mt-3 mb-1 h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-600" />
             {/* header */}
-            <div className="flex shrink-0 items-center justify-between px-4 pb-3 pt-2">
-              <Drawer.Title className="text-base font-semibold">
+            <div className="flex shrink-0 items-center justify-between px-4 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
+              <DialogTitle className="text-base font-semibold">
                 {editingFlow ? 'Chỉnh sửa luồng' : 'Tạo luồng mới'}
-              </Drawer.Title>
+              </DialogTitle>
               <button onClick={() => setFlowModalOpen(false)} className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900">
                 <X className="size-5" />
               </button>
@@ -1116,9 +1101,8 @@ export default function GeneratorClient({
                 </Button>
               </div>
             </div>
-          </Drawer.Content>
-        </Drawer.Portal>
-      </Drawer.Root>
+          </DialogContent>
+      </Dialog>
     </div>
   )
 }

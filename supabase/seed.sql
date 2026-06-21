@@ -1,0 +1,1 @@
+-- Test fixtures will be added after the authorization model is hardened.

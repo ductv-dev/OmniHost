@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from 'react'
 import { ChevronDown, Edit2, Plus, Trash2, X } from 'lucide-react'
-import { Drawer } from 'vaul'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -228,20 +228,17 @@ export default function TemplatesClient({
         </div>
       )}
 
-      {/* Modal */}
-      <Drawer.Root open={isModalOpen} onOpenChange={v => { if (!v) setIsModalOpen(false) }}>
-        <Drawer.Portal>
-          <Drawer.Overlay className="fixed inset-0 z-200 bg-black/40 backdrop-blur-sm" />
-          <Drawer.Content
-            className="fixed bottom-0 left-0 right-0 z-200 flex max-h-[90svh] flex-col rounded-t-[2rem] bg-white/95 shadow-2xl backdrop-blur-3xl dark:bg-zinc-900/95 max-w-130 mx-auto"
+      <Dialog open={isModalOpen} onOpenChange={v => { if (!v) setIsModalOpen(false) }}>
+          <DialogContent
+            overlayClassName="z-200"
+            className="z-200 flex h-dvh w-screen max-w-none flex-col gap-0 rounded-none border-0 bg-white/95 p-0 backdrop-blur-3xl dark:bg-zinc-900/95 sm:h-auto sm:max-h-[90vh] sm:max-w-xl sm:rounded-2xl sm:border"
             aria-label={editingTemplate ? 'Sửa template' : 'Template mới'}
           >
             {/* header */}
-            <div className="shrink-0 px-4 pt-3 pb-3">
-              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-zinc-200 dark:bg-zinc-800" />
-              <Drawer.Title className="text-lg font-semibold">
+            <div className="shrink-0 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3">
+              <DialogTitle className="text-lg font-semibold">
                 {editingTemplate ? 'Sửa template' : 'Template mới'}
-              </Drawer.Title>
+              </DialogTitle>
             </div>
 
             {/* scrollable body */}
@@ -373,22 +370,17 @@ export default function TemplatesClient({
                 {isLoading ? 'Đang lưu...' : 'Lưu template'}
               </Button>
             </div>
-          </Drawer.Content>
-        </Drawer.Portal>
+          </DialogContent>
 
-        {/* Variable picker — nested inside Root so vaul handles context correctly */}
-        <Drawer.NestedRoot open={drawerOpen} onOpenChange={v => { if (!v) setDrawerOpen(false) }}>
-        <Drawer.Portal>
-          <Drawer.Overlay className="fixed inset-0 z-300 bg-black/40 backdrop-blur-sm" />
-          <Drawer.Content
-            className="fixed bottom-0 left-0 right-0 z-300 flex max-h-[80svh] flex-col rounded-t-[2rem] bg-white/95 shadow-2xl backdrop-blur-3xl dark:bg-zinc-900/95 max-w-130 mx-auto"
+        <Dialog open={drawerOpen} onOpenChange={v => { if (!v) setDrawerOpen(false) }}>
+          <DialogContent
+            overlayClassName="z-300"
+            className="z-300 flex h-dvh w-screen max-w-none flex-col gap-0 rounded-none border-0 bg-white/95 p-0 backdrop-blur-3xl dark:bg-zinc-900/95 sm:h-auto sm:max-h-[80vh] sm:max-w-xl sm:rounded-2xl sm:border"
             aria-label="Chèn biến"
           >
-            {/* drag pill */}
-            <div className="mx-auto mt-3 mb-1 h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-600" />
             {/* header */}
             <div className="shrink-0 flex items-center justify-between px-4 pt-2 pb-3">
-              <Drawer.Title className="font-semibold">Chèn biến</Drawer.Title>
+              <DialogTitle className="font-semibold">Chèn biến</DialogTitle>
               <button
                 onClick={() => setDrawerOpen(false)}
                 className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900"
@@ -466,10 +458,9 @@ export default function TemplatesClient({
                 Xong
               </Button>
             </div>
-          </Drawer.Content>
-        </Drawer.Portal>
-        </Drawer.NestedRoot>
-      </Drawer.Root>
+          </DialogContent>
+        </Dialog>
+      </Dialog>
     </div>
   )
 }

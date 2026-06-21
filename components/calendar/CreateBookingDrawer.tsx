@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Drawer } from 'vaul'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { X, ChevronDown } from 'lucide-react'
 import { differenceInDays, parseISO } from 'date-fns'
 import { createBooking } from '@/app/dashboard/bookings/actions'
@@ -94,6 +94,10 @@ export default function CreateBookingDrawer({
     if (!fullName.trim()) { setError('Vui lòng nhập tên khách'); return }
     if (!checkIn || !checkOut) { setError('Vui lòng chọn ngày nhận và trả phòng'); return }
     if (checkOut <= checkIn) { setError('Ngày trả phòng phải sau ngày nhận'); return }
+    if (depositPaid > (typeof totalPrice === 'number' ? totalPrice : 0)) {
+      setError('Tiền cọc không được lớn hơn tổng tiền')
+      return
+    }
 
     setLoading(true)
     setError(null)
@@ -125,19 +129,16 @@ export default function CreateBookingDrawer({
   }
 
   return (
-    <Drawer.Root open={open} onOpenChange={onOpenChange}>
-      <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" />
-        <Drawer.Content
-          className="fixed bottom-0 left-0 right-0 z-50 flex max-h-[92svh] flex-col rounded-t-[2rem] border-t border-white/20 bg-white/95 shadow-2xl backdrop-blur-3xl dark:bg-zinc-900/95"
+    <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent
+          className="flex h-dvh w-screen max-w-none flex-col gap-0 rounded-none border-0 bg-white/95 p-0 backdrop-blur-3xl dark:bg-zinc-900/95 sm:h-auto sm:max-h-[92vh] sm:max-w-2xl sm:rounded-2xl sm:border"
           aria-label="Đặt phòng"
         >
-          <div className="flex-shrink-0 px-5 pt-4">
-            <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+          <div className="flex-shrink-0 px-5 pt-[max(1rem,env(safe-area-inset-top))]">
             <div className="flex items-center justify-between">
-              <Drawer.Title className="text-lg font-bold text-zinc-950 dark:text-white">
+              <DialogTitle className="text-lg font-bold text-zinc-950 dark:text-white">
                 Đặt phòng mới
-              </Drawer.Title>
+              </DialogTitle>
               <button
                 onClick={() => onOpenChange(false)}
                 className="flex size-8 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 dark:bg-zinc-800"
@@ -330,9 +331,8 @@ export default function CreateBookingDrawer({
             </div>
             </div>
           </form>
-        </Drawer.Content>
-      </Drawer.Portal>
-    </Drawer.Root>
+        </DialogContent>
+    </Dialog>
   )
 }
 

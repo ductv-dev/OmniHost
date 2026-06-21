@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { Building2, CalendarDays, MessageSquare, LogOut, AlignJustify, CalendarCheck } from 'lucide-react'
@@ -41,6 +41,20 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) return
+      supabase
+        .from('profiles')
+        .select('is_super_admin')
+        .eq('id', data.user.id)
+        .single()
+        .then(({ data: profile }) => setIsSuperAdmin(profile?.is_super_admin ?? false))
+    })
+  }, [])
 
   const handleLogout = async () => {
     const supabase = createClient()
@@ -50,7 +64,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-dvh bg-zinc-100 text-zinc-950 dark:bg-zinc-950 dark:text-zinc-50">
-      <AppSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <AppSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} isSuperAdmin={isSuperAdmin} />
 
       <div className="relative mx-auto flex min-h-dvh w-full max-w-130 flex-col bg-white shadow-2xl shadow-zinc-950/5 dark:bg-zinc-950">
         {/* Header */}

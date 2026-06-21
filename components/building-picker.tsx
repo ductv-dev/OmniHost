@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Building2, Check, ChevronRight, MapPin, Plus, X } from 'lucide-react'
 import { Drawer } from 'vaul'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { useBuilding } from './building-context'
 import { createBuildingInline } from '@/app/dashboard/buildings/actions'
 
@@ -113,7 +114,7 @@ export default function BuildingPicker({ open, onOpenChange }: BuildingPickerPro
   )
 }
 
-// ── Nested drawer ──────────────────────────────────────────────────────────────
+// ── Full-screen form dialog ───────────────────────────────────────────────────
 
 function AddBuildingDrawer({
   open,
@@ -162,17 +163,15 @@ function AddBuildingDrawer({
   }
 
   return (
-    <Drawer.NestedRoot open={open} onOpenChange={handleOpenChange}>
-      <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 z-60 bg-black/40 backdrop-blur-sm" />
-        <Drawer.Content
-          className="fixed bottom-0 left-0 right-0 z-60 flex max-h-[92svh] flex-col rounded-t-[2rem] border-t border-white/20 bg-white shadow-2xl dark:bg-zinc-900"
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent
+          overlayClassName="z-60"
+          className="z-60 flex h-dvh w-screen max-w-none flex-col gap-0 rounded-none border-0 bg-white p-0 dark:bg-zinc-900 sm:h-auto sm:max-h-[92vh] sm:max-w-2xl sm:rounded-2xl sm:border"
           aria-label="Thêm tòa nhà"
         >
-          <div className="shrink-0 px-5 pt-4">
-            <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+          <div className="shrink-0 px-5 pt-[max(1rem,env(safe-area-inset-top))]">
             <div className="flex items-center justify-between">
-              <Drawer.Title className="text-lg font-bold">Thêm tòa nhà</Drawer.Title>
+              <DialogTitle className="text-lg font-bold">Thêm tòa nhà</DialogTitle>
               <button
                 onClick={() => handleOpenChange(false)}
                 className="flex size-8 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 dark:bg-zinc-800"
@@ -236,9 +235,8 @@ function AddBuildingDrawer({
               </div>
             </div>
           </form>
-        </Drawer.Content>
-      </Drawer.Portal>
-    </Drawer.NestedRoot>
+        </DialogContent>
+    </Dialog>
   )
 }
 

@@ -38,6 +38,7 @@ export async function createBooking(
 
   const d = result.data
   if (d.check_out <= d.check_in) return { error: 'Ngày trả phòng phải sau ngày nhận phòng' }
+  if (d.deposit_paid > d.total_price) return { error: 'Tiền cọc không được lớn hơn tổng tiền' }
 
   // Upsert guest by phone
   let guestId: string | null = null
@@ -95,13 +96,6 @@ export async function createBooking(
     return { error: bookingError.message }
   }
 
-  await supabase.from('booking_history').insert({
-    booking_id: booking.id,
-    action: 'created',
-    changes: { status: 'confirmed', source: d.source },
-    changed_by: user?.id ?? null,
-  })
-
   revalidatePath('/dashboard/calendar')
   revalidatePath('/dashboard/bookings')
   return { bookingId: booking.id }
@@ -112,7 +106,22 @@ export async function updateBooking(
   input: Partial<CreateBookingInput>
 ): Promise<{ success: true } | { error: string }> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+
+  const { data: current, error: currentError } = await supabase
+    .from('bookings')
+    .select('check_in, check_out, total_price, deposit_paid')
+    .eq('id', id)
+    .single()
+  if (currentError || !current) return { error: 'Booking không tồn tại hoặc bạn không có quyền truy cập' }
+
+  const checkIn = input.check_in ?? current.check_in
+  const checkOut = input.check_out ?? current.check_out
+  const totalPrice = input.total_price ?? current.total_price
+  const depositPaid = input.deposit_paid ?? current.deposit_paid
+
+  if (checkOut <= checkIn) return { error: 'Ngày trả phòng phải sau ngày nhận phòng' }
+  if (totalPrice < 0 || depositPaid < 0) return { error: 'Số tiền không được âm' }
+  if (depositPaid > totalPrice) return { error: 'Tiền cọc không được lớn hơn tổng tiền' }
 
   const updateData: Record<string, unknown> = {}
   if (input.check_in) updateData.check_in = input.check_in
@@ -127,24 +136,12 @@ export async function updateBooking(
   if (input.deposit_paid !== undefined) updateData.deposit_paid = input.deposit_paid
   if (input.note !== undefined) updateData.note = input.note || null
 
-  if (input.check_in && input.check_out && input.check_out <= input.check_in) {
-    return { error: 'Ngày trả phòng phải sau ngày nhận phòng' }
-  }
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await supabase.from('bookings').update(updateData as any).eq('id', id)
   if (error) {
     if (error.code === '23P01') return { error: 'Phòng đã được đặt trong khoảng thời gian này' }
     return { error: error.message }
   }
-
-  await supabase.from('booking_history').insert({
-    booking_id: id,
-    action: 'updated',
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    changes: updateData as any,
-    changed_by: user?.id ?? null,
-  })
 
   // Update guest record if any guest fields provided
   const hasGuestUpdate = input.guest_full_name || input.guest_phone !== undefined ||
@@ -170,15 +167,6 @@ export async function updateBooking(
 
 export async function deleteBooking(id: string): Promise<{ success: true } | { error: string }> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  await supabase.from('booking_history').insert({
-    booking_id: id,
-    action: 'deleted',
-    changes: null,
-    changed_by: user?.id ?? null,
-  })
-
   const { error } = await supabase.from('bookings').delete().eq('id', id)
   if (error) return { error: error.message }
 
@@ -192,21 +180,12 @@ export async function updateBookingStatus(
   newStatus: 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled' | 'no_show'
 ): Promise<{ success: true } | { error: string }> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
   const { data: current } = await supabase.from('bookings').select('status').eq('id', id).single()
   if (!current) return { error: 'Booking không tồn tại' }
   if (current.status === 'cancelled') return { error: 'Booking đã bị hủy' }
 
   const { error } = await supabase.from('bookings').update({ status: newStatus }).eq('id', id)
   if (error) return { error: error.message }
-
-  await supabase.from('booking_history').insert({
-    booking_id: id,
-    action: newStatus === 'cancelled' ? 'cancelled' : 'updated',
-    changes: { status: newStatus, previous_status: current.status },
-    changed_by: user?.id ?? null,
-  })
 
   revalidatePath('/dashboard/calendar')
   revalidatePath('/dashboard/bookings')
