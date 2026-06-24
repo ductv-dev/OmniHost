@@ -34,7 +34,7 @@ File này là checklist chính của dự án. Mỗi task chỉ được chuyể
 
 ## Chưa làm
 
-- [ ] Deploy code giao diện mới lên môi trường production của ứng dụng.
+- [x] Deploy code giao diện mới lên môi trường production của ứng dụng.
 - [ ] Cập nhật Supabase Invite email template để đi qua `/auth/confirm` và gửi lại lời mời thử.
 - [ ] Cấu hình và gửi thử email mời nhân sự qua SMTP production.
 - [ ] Kiểm thử end-to-end bằng tài khoản thật cho từng vai trò.

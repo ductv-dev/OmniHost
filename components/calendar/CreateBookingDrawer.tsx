@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { X, ChevronDown } from 'lucide-react'
 import { differenceInDays, parseISO } from 'date-fns'
-import { createBooking } from '@/app/dashboard/bookings/actions'
+import { calculateStayPrice, createBooking } from '@/app/dashboard/bookings/actions'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
 import type { CalRoom, CalBooking } from './TimelineCalendar'
 
@@ -88,10 +88,22 @@ export default function CreateBookingDrawer({
       // Keep the editable price draft in sync when room or stay length changes.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setTotalPrice(nights * (selectedRoom.default_price ?? 0))
+      let ignore = false
+      void calculateStayPrice({
+        room_id: selectedRoom.id,
+        check_in: checkIn,
+        check_out: checkOut,
+      }).then((result) => {
+        if (ignore || 'error' in result) return
+        setTotalPrice(result.total_price)
+      })
+      return () => {
+        ignore = true
+      }
     } else {
       setTotalPrice('')
     }
-  }, [nights, selectedRoom])
+  }, [checkIn, checkOut, nights, selectedRoom])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -287,7 +299,7 @@ export default function CreateBookingDrawer({
                 <div className="rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-800">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-sm text-zinc-500">
-                      {nights > 0 ? `${nights} đêm × ${(selectedRoom?.default_price ?? 0).toLocaleString('vi-VN')}đ` : 'Tổng tiền'}
+                      {nights > 0 ? `${nights} đêm · giá theo lịch` : 'Tổng tiền'}
                     </span>
                     <div className="relative">
                       <input

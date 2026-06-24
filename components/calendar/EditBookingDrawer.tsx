@@ -1,6 +1,6 @@
 'use client'
 
-import { updateBooking } from '@/app/dashboard/bookings/actions'
+import { calculateStayPrice, updateBooking } from '@/app/dashboard/bookings/actions'
 import SourceIcon from '@/components/booking/SourceIcon'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
 import type { BookingSource } from '@/types/booking'
@@ -89,13 +89,26 @@ export default function EditBookingDrawer({
   // Recalculate price when dates change
   const selectedRoom = rooms.find(r => r.id === booking.room_id)
   useEffect(() => {
+    if (checkIn === booking.check_in && checkOut === booking.check_out) return
     if (checkIn && checkOut && checkOut > checkIn && selectedRoom) {
       const nights = differenceInDays(parseISO(checkOut), parseISO(checkIn))
       // Recalculate the editable draft only when stay dates change.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setTotalPrice(nights * (selectedRoom.default_price ?? 0))
+      let ignore = false
+      void calculateStayPrice({
+        room_id: selectedRoom.id,
+        check_in: checkIn,
+        check_out: checkOut,
+      }).then((result) => {
+        if (ignore || 'error' in result) return
+        setTotalPrice(result.total_price)
+      })
+      return () => {
+        ignore = true
+      }
     }
-  }, [checkIn, checkOut, selectedRoom])
+  }, [booking.check_in, booking.check_out, checkIn, checkOut, selectedRoom])
 
   async function handleSave() {
     if (!fullName.trim()) { setError('Vui lòng nhập tên khách'); return }

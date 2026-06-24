@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { eachDayOfInterval, format, parseISO } from 'date-fns'
+import { addDays, eachDayOfInterval, format, parseISO } from 'date-fns'
 
 const bookingSchema = z.object({
   building_id: z.string().uuid('Chọn tòa nhà'),
@@ -26,6 +26,66 @@ const bookingSchema = z.object({
 })
 
 export type CreateBookingInput = z.input<typeof bookingSchema>
+
+const stayPriceSchema = z.object({
+  room_id: z.string().uuid('Chọn phòng'),
+  check_in: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày không hợp lệ'),
+  check_out: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày không hợp lệ'),
+})
+
+export async function calculateStayPrice(input: z.input<typeof stayPriceSchema>): Promise<
+  | {
+      total_price: number
+      nights: number
+      custom_nights: number
+      default_price: number
+    }
+  | { error: string }
+> {
+  const supabase = await createClient()
+
+  const result = stayPriceSchema.safeParse(input)
+  if (!result.success) return { error: result.error.errors[0].message }
+
+  const d = result.data
+  if (d.check_out <= d.check_in) return { error: 'Ngày trả phòng phải sau ngày nhận phòng' }
+
+  const stayDates = eachDayOfInterval({
+    start: parseISO(d.check_in),
+    end: addDays(parseISO(d.check_out), -1),
+  }).map((date) => format(date, 'yyyy-MM-dd'))
+
+  const { data: room, error: roomError } = await supabase
+    .from('rooms')
+    .select('default_price')
+    .eq('id', d.room_id)
+    .single()
+
+  if (roomError || !room) return { error: 'Không tìm thấy phòng hoặc bạn không có quyền truy cập' }
+
+  const { data: rates, error: ratesError } = await supabase
+    .from('room_rates')
+    .select('date, price')
+    .eq('room_id', d.room_id)
+    .gte('date', d.check_in)
+    .lt('date', d.check_out)
+
+  if (ratesError) return { error: ratesError.message }
+
+  const rateByDate = new Map((rates ?? []).map((rate) => [rate.date, rate.price]))
+  const defaultPrice = room.default_price ?? 0
+  const totalPrice = stayDates.reduce(
+    (total, date) => total + (rateByDate.get(date) ?? defaultPrice),
+    0
+  )
+
+  return {
+    total_price: totalPrice,
+    nights: stayDates.length,
+    custom_nights: rateByDate.size,
+    default_price: defaultPrice,
+  }
+}
 
 export async function createBooking(
   input: CreateBookingInput

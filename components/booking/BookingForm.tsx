@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { createBooking } from '@/app/dashboard/bookings/actions'
+import { calculateStayPrice, createBooking } from '@/app/dashboard/bookings/actions'
 import SourceIcon from '@/components/booking/SourceIcon'
 import type { BookingSource, BuildingForBooking, RoomForBooking } from '@/types/booking'
 
@@ -108,6 +108,20 @@ export default function BookingForm({ buildings }: Props) {
     if (!room) return
     const nights = differenceInDays(parseISO(watchCheckOut), parseISO(watchCheckIn))
     setValue('total_price', room.default_price * nights)
+
+    let ignore = false
+    void calculateStayPrice({
+      room_id: watchRoomId,
+      check_in: watchCheckIn,
+      check_out: watchCheckOut,
+    }).then((result) => {
+      if (ignore || 'error' in result) return
+      setValue('total_price', result.total_price)
+    })
+
+    return () => {
+      ignore = true
+    }
   }, [watchRoomId, watchCheckIn, watchCheckOut, rooms, setValue])
 
   const nights =
