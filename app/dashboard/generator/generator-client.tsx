@@ -14,6 +14,7 @@ import {
   generateTemplateMessage,
   MessageTemplate,
   extractDynamicVariables,
+  extractDatabaseVariables,
   formatVariableLabel,
   parseMessageTemplates,
   MANUAL_VARIABLE_SUGGESTIONS,
@@ -96,6 +97,15 @@ export default function GeneratorClient({
   const [pendingQueueItemId, setPendingQueueItemId] = useState<string | null>(null)
   const [dynamicValues, setDynamicValues] = useState<Record<string, string>>({})
   const [sheetCopied, setSheetCopied] = useState(false)
+
+  // global state to remember dynamic values across templates/flows
+  const [globalDynamicValues, setGlobalDynamicValues] = useState<Record<string, string>>({})
+
+  // flow fill modal
+  const [flowFillModalOpen, setFlowFillModalOpen] = useState(false)
+  const [flowFillTemplates, setFlowFillTemplates] = useState<{ tpl: MessageTemplate, dynKeys: string[] }[]>([])
+  const [flowFillValues, setFlowFillValues] = useState<Record<string, string>>({})
+  const [flowFillUniqueKeys, setFlowFillUniqueKeys] = useState<string[]>([])
 
   // queue
   const [queue, setQueue] = useState<QueueItem[]>([])
@@ -193,8 +203,13 @@ export default function GeneratorClient({
 
   const sheetDynamicKeys = useMemo(() => {
     if (!sheetTemplate) return []
-    return extractDynamicVariables(sheetTemplate.content, sheetTemplate.type)
-  }, [sheetTemplate])
+    const baseKeys = extractDynamicVariables(sheetTemplate.content, sheetTemplate.type)
+    if (sheetTemplate.type === 'building' && (!selectedBuilding || !selectedRoom)) {
+      const dbKeys = extractDatabaseVariables(sheetTemplate.content, sheetTemplate.type)
+      return [...baseKeys, ...dbKeys]
+    }
+    return baseKeys
+  }, [sheetTemplate, selectedBuilding, selectedRoom])
 
   const canGenerate = Boolean(
     sheetTemplate &&
@@ -281,7 +296,14 @@ export default function GeneratorClient({
   const openSheet = (template: MessageTemplate, pendingId?: string) => {
     setSheetTemplate(template)
     setPendingQueueItemId(pendingId ?? null)
-    setDynamicValues({})
+    
+    const dynKeys = extractDynamicVariables(template.content, template.type)
+    const initialValues = dynKeys.reduce((acc, k) => {
+      acc[k] = globalDynamicValues[k] || ''
+      return acc
+    }, {} as Record<string, string>)
+    setDynamicValues(initialValues)
+    
     setSheetCopied(false)
   }
 
@@ -294,6 +316,9 @@ export default function GeneratorClient({
   const confirmSheetMessage = () => {
     if (!sheetMessage || !sheetTemplate) return
     const finalMessage = hasUnfilledPlaceholders ? null : sheetMessage
+    
+    setGlobalDynamicValues(prev => ({ ...prev, ...dynamicValues }))
+
     if (pendingQueueItemId) {
       setQueue(prev => prev.map(item =>
         item.id === pendingQueueItemId ? { ...item, message: finalMessage } : item
@@ -338,23 +363,62 @@ export default function GeneratorClient({
 
   const loadFlow = (flow: Tables<'message_flows'>) => {
     const refs = parseFlowItems(flow.items)
-    const newItems: QueueItem[] = refs.flatMap(ref => {
+    const tplsToProcess: { tpl: MessageTemplate, dynKeys: string[] }[] = []
+    const uniqueDynKeys = new Set<string>()
+
+    for (const ref of refs) {
       const tpl = allTemplates.find(t => t.id === ref.template_id)
-      if (!tpl) return []
-      const dynKeys = extractDynamicVariables(tpl.content, tpl.type)
-      const canAuto = tpl.type === 'custom'
-        ? dynKeys.length === 0
-        : !!(selectedBuilding && selectedRoom && dynKeys.length === 0)
-      return [{
+      if (!tpl) continue
+      let dynKeys = extractDynamicVariables(tpl.content, tpl.type)
+      if (tpl.type === 'building' && (!selectedBuilding || !selectedRoom)) {
+        const dbKeys = extractDatabaseVariables(tpl.content, tpl.type)
+        dynKeys = [...dynKeys, ...dbKeys]
+      }
+      tplsToProcess.push({ tpl, dynKeys })
+      dynKeys.forEach(k => uniqueDynKeys.add(k))
+    }
+
+    if (uniqueDynKeys.size > 0) {
+      setFlowFillTemplates(tplsToProcess)
+      setFlowFillUniqueKeys(Array.from(uniqueDynKeys))
+      
+      const initialFill = Array.from(uniqueDynKeys).reduce((acc, k) => {
+        acc[k] = globalDynamicValues[k] || ''
+        return acc
+      }, {} as Record<string, string>)
+      
+      setFlowFillValues(initialFill)
+      setFlowFillModalOpen(true)
+    } else {
+      const newItems: QueueItem[] = tplsToProcess.map(({ tpl }) => ({
         id: crypto.randomUUID(),
         templateId: tpl.id,
         templateName: tpl.name,
-        message: canAuto
-          ? generateTemplateMessage(tpl.content, tpl.type === 'building' ? dbVariables : {}, {})
-          : null,
-      }]
+        message: generateTemplateMessage(tpl.content, tpl.type === 'building' ? dbVariables : {}, {})
+      }))
+      setQueue(prev => [...prev, ...newItems])
+      setActiveTab('queue')
+    }
+  }
+
+  const confirmFlowFill = () => {
+    setGlobalDynamicValues(prev => ({ ...prev, ...flowFillValues }))
+
+    const newItems: QueueItem[] = flowFillTemplates.map(({ tpl, dynKeys }) => {
+      const isFullyFilled = dynKeys.every(k => flowFillValues[k]?.trim())
+
+      return {
+        id: crypto.randomUUID(),
+        templateId: tpl.id,
+        templateName: tpl.name,
+        message: isFullyFilled
+          ? generateTemplateMessage(tpl.content, tpl.type === 'building' ? dbVariables : {}, flowFillValues)
+          : null
+      }
     })
-    setQueue(newItems)
+
+    setQueue(prev => [...prev, ...newItems])
+    setFlowFillModalOpen(false)
     setActiveTab('queue')
   }
 
@@ -798,6 +862,54 @@ export default function GeneratorClient({
               <Button className="h-12 rounded-xl" disabled={!sheetMessage} onClick={confirmSheetMessage}>
                 {pendingQueueItemId ? 'Xác nhận' : <><Plus className="mr-2 size-4" /> Thêm vào hàng</>}
               </Button>
+            </div>
+          </DialogContent>
+      </Dialog>
+
+      {/* ── Flow Fill Modal ── */}
+      <Dialog open={flowFillModalOpen} onOpenChange={v => { if (!v) setFlowFillModalOpen(false) }}>
+          <DialogContent
+            overlayClassName="z-200"
+            className="z-200 flex h-dvh w-screen max-w-none flex-col gap-0 rounded-none border-0 bg-white/95 p-0 backdrop-blur-3xl dark:bg-zinc-900/95 sm:h-auto sm:max-h-[90vh] sm:max-w-xl sm:rounded-2xl sm:border"
+            aria-label="Điền thông tin luồng"
+          >
+            <div className="flex shrink-0 items-center justify-between px-4 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
+              <DialogTitle className="text-base font-semibold">Điền thông tin cho luồng</DialogTitle>
+              <button onClick={() => setFlowFillModalOpen(false)} className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900">
+                <X className="size-5" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto border-t border-zinc-100 px-4 py-4 dark:border-zinc-900">
+              <div className="space-y-5">
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Các template trong luồng này yêu cầu các thông tin dưới đây. Bạn chỉ cần điền 1 lần, hệ thống sẽ tự động áp dụng cho tất cả tin nhắn trong luồng.
+                </p>
+                <div className="space-y-4">
+                  {flowFillUniqueKeys.map(key => (
+                    <div key={key} className="space-y-1.5">
+                      <label className="text-sm font-semibold">{formatVariableLabel(key)}</label>
+                      <Input
+                        placeholder={`Nhập ${formatVariableLabel(key).toLowerCase()}...`}
+                        value={flowFillValues[key] || ''}
+                        onChange={e => setFlowFillValues(prev => ({ ...prev, [key]: e.target.value }))}
+                        className="h-11 rounded-lg bg-black/5 dark:bg-white/10 border-0 focus-visible:ring-2 focus-visible:ring-primary/50"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="shrink-0 border-t border-zinc-100 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-zinc-900">
+              <div className="grid grid-cols-2 gap-3">
+                <Button variant="outline" className="h-12 rounded-xl" onClick={() => setFlowFillModalOpen(false)}>
+                  Hủy
+                </Button>
+                <Button className="h-12 rounded-xl" onClick={confirmFlowFill}>
+                  <Plus className="mr-2 size-4" /> Tải vào hàng gửi
+                </Button>
+              </div>
             </div>
           </DialogContent>
       </Dialog>
